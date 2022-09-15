@@ -20,11 +20,13 @@ The default config file is `~/.defichain-compound`. Using the `--conf` option a 
 # Connection to defid
 RPC_URL=http://user:password@localhost:8554
 
-# Amount of DFI needed before the action is executed (plus always keeping UTXO available for transaction fees)
+# Amount of DFI needed before the action is executed 
+# (plus always keeping UTXO available for transaction fees)
 DFI_COMPOUND_AMOUNT=5
 UTXO_BUFFER=0.5
 
-# Wallet address of the desktop client (sender) and the compounding recipient (DeFiChain native addresses only)
+# Wallet address of the desktop client (sender) and the 
+# compounding recipient (DeFiChain native addresses only)
 WALLET_ADDRESS=address
 RECIPIENT_ADDRESS=address
 
