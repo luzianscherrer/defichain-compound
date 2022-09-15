@@ -1,0 +1,35 @@
+{
+  "name": "defichain-compound",
+  "version": "0.1.0",
+  "description": "DFI earnings automation for DeFiChain",
+  "main": "./lib/index.js",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "tsc -p .",
+    "local": "npm run build && npm i -g"
+  },
+  "bin": {
+    "defichain-compound": "./lib/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/luzianscherrer/defichain-compound.git"
+  },
+  "keywords": [
+    "defichain",
+    "dfi",
+    "compound",
+    "automation"
+  ],
+  "author": "Luzian Scherrer",
+  "license": "MIT",
+  "dependencies": {
+    "@defichain/jellyfish-api-jsonrpc": "^2.58.0",
+    "bignumber.js": "^9.1.0",
+    "commander": "^9.4.0",
+    "defichain": "^2.58.0",
+    "dotenv": "^16.0.1",
+    "readline-sync": "^1.4.10",
+    "typescript": "^4.8.3"
+  }
+}
