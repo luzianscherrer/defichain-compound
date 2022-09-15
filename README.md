@@ -7,7 +7,7 @@
 ## Installation
 
 ```
-npm install defichain-compound
+npm -g install defichain-compound
 ```
 
 ## Configuration
