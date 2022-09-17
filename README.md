@@ -19,7 +19,7 @@ The default config file is `~/.defichain-compound`. Using the `--conf` option a 
 The parameter `TARGET` in the config file defines the compounding action. The following  actions are supported:
 
 | Action | TARGET | Example value for TARGET | Example use case |
-|-|-|-|-|
+|:-|:-|:-|:-|
 | Wallet transfer | DeFiChain wallet address | `bDElRwJkQrRSoxhf7TKtVwahx4vd3wxTgV` | Transfer DFI to [Cake](https://www.cakedefi.com) for staking |
 | Token swap | Token symbol | `ETH` | DCA into ETH token |
 
