@@ -14,6 +14,16 @@ npm -g install defichain-compound
 
 The default config file is `~/.defichain-compound`. Using the `--conf` option a different location for the config file can be chosen.
 
+### Compounding Actions
+
+The parameter `TARGET` in the config file defines the compounding action. The following  actions are supported:
+
+| Action | TARGET | Example value for TARGET | Example use case |
+|-|-|-|-|
+| Wallet transfer | DeFiChain wallet address | `bDElRwJkQrRSoxhf7TKtVwahx4vd3wxTgV` | Transfer DFI to [Cake](https://www.cakedefi.com) for staking |
+| Token swap | Token symbol | `ETH` | DCA into ETH token |
+
+
 ### Example Config File
 
 ```
@@ -21,14 +31,13 @@ The default config file is `~/.defichain-compound`. Using the `--conf` option a 
 RPC_URL=http://user:password@localhost:8554
 
 # Amount of DFI needed before the action is executed 
-# Always keeping additional UTXO_BUFFER available for transaction fees
 DFI_COMPOUND_AMOUNT=5
-UTXO_BUFFER=0.5
 
-# Wallet address of the desktop client (sender) and the 
-# compounding recipient (DeFiChain native addresses only)
+# Wallet address of the desktop client
 WALLET_ADDRESS=address
-RECIPIENT_ADDRESS=address
+
+# Target for compounding action (see documentation)
+TARGET=address or token symbol
 
 # Logfile and pidfile
 LOGFILE=/tmp/defichain-compound.log

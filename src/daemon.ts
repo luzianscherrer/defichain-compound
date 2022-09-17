@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 let child_process = require('child_process');
 let fs = require('fs');
 
+let RESERVE = new BigNumber(0.1);
+
 let walletPassphrase = '';
 
 function logDate() {
@@ -45,11 +47,10 @@ function checkConfig(configFile: string): boolean {
     if(!process.env.RPC_URL)                { missingParameters += 'RCP_URL\n'; }
     if(!process.env.DFI_COMPOUND_AMOUNT)    { missingParameters += 'DFI_COMPOUND_AMOUNT\n'; }
     if(!process.env.WALLET_ADDRESS)         { missingParameters += 'WALLET_ADDRESS\n'; }
-    if(!process.env.RECIPIENT_ADDRESS)      { missingParameters += 'RECIPIENT_ADDRESS\n'; }
+    if(!process.env.TARGET)                 { missingParameters += 'TARGET\n'; }
     if(!process.env.LOGFILE)                { missingParameters += 'LOGFILE\n'; }
     if(!process.env.PIDFILE)                { missingParameters += 'PIDFILE\n'; }
     if(!process.env.CHECK_INTERVAL_MINUTES) { missingParameters += 'CHECK_INTERVAL_MINUTES\n'; }
-    if(!process.env.UTXO_BUFFER)            { missingParameters += 'UTXO_BUFFER\n'; }
 
     if(missingParameters.length) {
         console.log(`Missing parameters in ${configFile} config file:\n${missingParameters}`);
@@ -88,6 +89,61 @@ async function checkPassphrase(): Promise<boolean> {
     return true;
 }
 
+async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber) {
+    const amount = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!);
+
+    if(tokenBalance.isLessThan(amount)) {
+        const amountToConvert = amount.minus(tokenBalance);
+        console.log(logDate() +  `Convert ${amountToConvert} UTXO to DFI token`);
+
+        const hash = await client.account.utxosToAccount(
+            { [process.env.WALLET_ADDRESS!]: `${amountToConvert.toFixed(8)}@DFI` }
+        );
+        console.log(logDate() + `Convert transaction: ${hash}`);
+
+        console.log(logDate() + `Waiting for convert to complete`);
+        while(tokenBalance.isLessThan(amount)) {
+            await new Promise(r => setTimeout(r, 5*1000));
+            const tokenBalances = await client.account.getTokenBalances({limit: 100}, true, { symbolLookup: true });
+            tokenBalance = tokenBalances['DFI'];
+        }
+        console.log(logDate() + `Convert completed`);
+    }
+
+    console.log(logDate() +  `Swap ${amount} DFI token to ${process.env.TARGET}`);
+    const txid = await client.poolpair.poolSwap({ 
+        from: process.env.WALLET_ADDRESS!, 
+        tokenFrom: "DFI",
+        amountFrom: amount.toNumber(),
+        to: process.env.WALLET_ADDRESS!,
+        tokenTo: process.env.TARGET!
+    });
+    console.log(logDate() + `Swap transaction: ${txid}`);
+}
+
+async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNumber) {
+    const amount = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!);
+
+    if(utxoBalance.isLessThan(amount.plus(RESERVE))) {
+        const amountToConvert = amount.minus(utxoBalance).plus(RESERVE);
+        console.log(logDate() +  `Convert ${amountToConvert} DFI token to UTXO`);
+    
+        const hash = await client.account.accountToUtxos(
+             process.env.WALLET_ADDRESS!,
+             { [process.env.WALLET_ADDRESS!]: `${amountToConvert.toFixed(8)}@DFI` }
+         );
+         console.log(logDate() + `Convert transaction: ${hash}`);
+    }
+
+    console.log(logDate() +  `Send ${amount} UTXO to ${process.env.TARGET}`);
+    const txid = await client.call(
+        'sendtoaddress',
+        [ process.env.TARGET, amount.toFixed(8), '', '', false ],
+        'bignumber'
+    );
+    console.log(logDate() +  `Send transaction: ${txid}`);
+}
+
 async function checkBalances() {
     const client = new JsonRpcClient(process.env.RPC_URL!)
     const utxoBalance = await client.wallet.getBalance();
@@ -95,35 +151,20 @@ async function checkBalances() {
 
     console.log(logDate() + `Balance: ${utxoBalance.plus(tokenBalances['DFI'])} (DFI token: ${tokenBalances['DFI']} / UTXO: ${utxoBalance})`);
 
-    if( utxoBalance.plus(tokenBalances['DFI']).isGreaterThan(new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).plus(new BigNumber(process.env.UTXO_BUFFER!))) ) {
-        console.log(logDate() + `Compound threshold of ${BigNumber(process.env.DFI_COMPOUND_AMOUNT!).plus(new BigNumber(process.env.UTXO_BUFFER!))} (${BigNumber(process.env.DFI_COMPOUND_AMOUNT!)} + ${new BigNumber(process.env.UTXO_BUFFER!)}) reached`);
+    if( utxoBalance.plus(tokenBalances['DFI']).isGreaterThan(new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).plus(RESERVE)) ) {
+        console.log(logDate() + `Compound threshold of ${BigNumber(process.env.DFI_COMPOUND_AMOUNT!).plus(RESERVE)} (${BigNumber(process.env.DFI_COMPOUND_AMOUNT!)} + ${RESERVE}) reached`);
 
         await client.call('walletpassphrase', [ walletPassphrase, 5*60 ], 'bignumber');
 
-        const amount = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!);
-
-        if(utxoBalance.isLessThan(amount.plus(process.env.UTXO_BUFFER!))) {
-            const amountToConvert = amount.minus(utxoBalance).plus(process.env.UTXO_BUFFER!);
-            console.log(logDate() +  `Convert ${amountToConvert} DFI token to UTXO`);
-        
-            const hash = await client.account.accountToUtxos(
-                 process.env.WALLET_ADDRESS!,
-                 { [process.env.WALLET_ADDRESS!]: `${amountToConvert.toFixed(8)}@DFI`}
-             );
-             console.log(logDate() + `Convert transaction: ${hash}`);
-            //  const tx = await client.rawtx.getRawTransaction(hash, true);
+        if(process.env.TARGET!.length === 34) {
+            await transferToWalletAction(client, utxoBalance);
+        } else if(process.env.TARGET!.length === 3 || process.env.TARGET!.length === 4) {
+            await swapTokenAction(client, tokenBalances['DFI']);
+        } else {
+            console.log(logDate() + `TARGET does not contain a valid value`);
         }
 
-        console.log(logDate() +  `Send ${amount} UTXO to ${process.env.RECIPIENT_ADDRESS}`);
-        const txid = await client.call(
-            'sendtoaddress',
-            [ process.env.RECIPIENT_ADDRESS, amount.toFixed(8), '', '', false ],
-            'bignumber'
-        );
-        console.log(logDate() +  `Send transaction: ${txid}`);
-
         await client.call('walletlock', [], 'bignumber');
-
     }
 
 }
