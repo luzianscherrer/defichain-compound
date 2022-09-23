@@ -2,7 +2,7 @@
 
 ## Introduction
 
-`defichain-compound` is a CLI daemon that is running in tandem and communicating with defid of the [DeFiChain desktop wallet](https://github.com/DeFiCh/app). Its purpose is to execute automatic compounding tasks based on a configuration file.
+`defichain-compound` is a CLI daemon that is running in parallel with `defid` of the [DeFiChain desktop wallet](https://github.com/DeFiCh/app) or [fullnode](https://github.com/DeFiCh/ain). Its purpose is to execute automatic compounding tasks based on a configuration file.
 
 ## Installation
 
@@ -20,8 +20,9 @@ The parameter `TARGET` in the config file defines the compounding action. The fo
 
 | Action | TARGET | Example value for TARGET | Example use case |
 |:-|:-|:-|:-|
-| Wallet transfer | DeFiChain wallet address | `bDElRwJkQrRSoxhf7TKtVwahx4vd3wxTgV` | Transfer DFI to [Cake](https://www.cakedefi.com) for staking |
+| Add pool liquidity | Pool pair symbol | `BTC-DFI` | Compounding BTC-DFI pool liquidity mining (currently only DFI pairs are supported) |
 | Token swap | Token symbol | `ETH` | DCA into ETH token |
+| Wallet transfer | DeFiChain wallet address | `bDEl...wxTgV` | Transfer DFI to [Cake](https://www.cakedefi.com) for staking |
 
 
 ### Example Config File
@@ -37,13 +38,13 @@ DFI_COMPOUND_AMOUNT=5
 WALLET_ADDRESS=address
 
 # Target for compounding action (see documentation)
-TARGET=address or token symbol
+TARGET=wallet address or token symbol or pool pair symbol
 
 # Logfile and pidfile
 LOGFILE=/tmp/defichain-compound.log
 PIDFILE=/tmp/defichain-compound.pid
 
-# Check if compounding is needed in this interval
+# Interval to check if compounding is needed
 CHECK_INTERVAL_MINUTES=720
 
 ```
@@ -54,4 +55,4 @@ In order to initiate transfers `defichain-compound` needs to know the passphrase
 
 ## Disclaimer
 
-This is not financial advice. Please only run this code if you fully understand what it is doing. This code is provided as-is with no warranty. I take no responsibility for lost funds while using it. 
+This is not financial advice. Please only run this code if you fully understand what it is doing. This code is provided as-is with no warranty. I take no responsibility for lost funds or any other damage that it might cause. 

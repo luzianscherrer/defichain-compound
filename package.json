@@ -6,7 +6,8 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "build": "tsc -p .",
-    "local": "npm run build && npm i -g"
+    "local": "npm run build && npm i -g",
+    "release": "npm run build && npm publish"
   },
   "bin": {
     "defichain-compound": "./lib/index.js"
