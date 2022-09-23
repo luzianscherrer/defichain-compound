@@ -13,7 +13,7 @@ let walletPassphrase = '';
 function logDate() {
     let tzoffset = (new Date()).getTimezoneOffset() * 60000;
     let localIsoTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, -1);
-    return localIsoTime + ' ';
+    return (localIsoTime + ' ').replace('T', ' ');
 }
 
 function daemonize() {
@@ -89,7 +89,7 @@ async function checkPassphrase(): Promise<boolean> {
     return true;
 }
 
-async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber) {
+async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber): Promise<BigNumber> {
     const amount = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!);
 
     if(tokenBalance.isLessThan(amount)) {
@@ -99,18 +99,24 @@ async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber) {
         const hash = await client.account.utxosToAccount(
             { [process.env.WALLET_ADDRESS!]: `${amountToConvert.toFixed(8)}@DFI` }
         );
-        console.log(logDate() + `Convert transaction: ${hash}`);
+        console.log(logDate() + `Conversion transaction: ${hash}`);
 
-        console.log(logDate() + `Waiting for convert to complete`);
+        console.log(logDate() + `Waiting for conversion to complete`);
         while(tokenBalance.isLessThan(amount)) {
             await new Promise(r => setTimeout(r, 5*1000));
             const tokenBalances = await client.account.getTokenBalances({limit: 100}, true, { symbolLookup: true });
             tokenBalance = tokenBalances['DFI'];
         }
-        console.log(logDate() + `Convert completed`);
+        console.log(logDate() + `Conversion completed`);
     }
 
-    console.log(logDate() +  `Swap ${amount} DFI token to ${process.env.TARGET}`);
+    const tokenBalancesBefore = await client.account.getTokenBalances({limit: 100}, true, { symbolLookup: true });
+    let tokenBalanceBefore  = new BigNumber(0);
+    if(tokenBalancesBefore[process.env.TARGET!]) {
+        tokenBalanceBefore = tokenBalancesBefore[process.env.TARGET!];
+    }
+
+    console.log(logDate() +  `Swap ${amount} DFI token to ${process.env.TARGET} token`);
     const txid = await client.poolpair.poolSwap({ 
         from: process.env.WALLET_ADDRESS!, 
         tokenFrom: "DFI",
@@ -119,6 +125,18 @@ async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber) {
         tokenTo: process.env.TARGET!
     });
     console.log(logDate() + `Swap transaction: ${txid}`);
+
+    let tokenBalanceAfter = tokenBalanceBefore;
+    while(tokenBalanceAfter.isEqualTo(tokenBalanceBefore)) {
+        await new Promise(r => setTimeout(r, 5*1000));
+        const tokenBalancesAfter = await client.account.getTokenBalances({limit: 100}, true, { symbolLookup: true });
+        if(tokenBalancesAfter[process.env.TARGET!]) {
+            tokenBalanceAfter = tokenBalancesAfter[process.env.TARGET!];
+        }
+    }
+    console.log(logDate() + `Received ${tokenBalanceAfter.minus(tokenBalanceBefore)} ${process.env.TARGET!} token`);
+
+    return tokenBalanceAfter.minus(tokenBalanceBefore);
 }
 
 async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNumber) {
