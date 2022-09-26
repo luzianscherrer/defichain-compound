@@ -1,6 +1,6 @@
 # DFI earnings automation for DeFiChain
 
-[![npm (tag)](https://img.shields.io/npm/v/defichain-compound)](https://www.npmjs.com/package/defichain-compound)
+[![npm](https://img.shields.io/npm/v/defichain-compound)](https://www.npmjs.com/package/defichain-compound)
 
 ## Introduction
 
