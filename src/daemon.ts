@@ -183,13 +183,16 @@ async function checkBalances() {
     if( utxoBalance.plus(tokenBalances['DFI']).isGreaterThan(new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).plus(RESERVE)) ) {
         console.log(logDate() + `Compound threshold of ${BigNumber(process.env.DFI_COMPOUND_AMOUNT!).plus(RESERVE)} (${BigNumber(process.env.DFI_COMPOUND_AMOUNT!)} + ${RESERVE}) reached`);
 
+        const poolPairs = await client.poolpair.listPoolPairs({start: 0, including_start: true, limit: 1000}, false);
+        const supportedPoolPairs = Object.entries(poolPairs).filter(([key, value]) => value.symbol.endsWith('-DFI')).map(pair => pair[1].symbol);    
+
         await client.call('walletpassphrase', [ walletPassphrase, 5*60 ], 'bignumber');
 
         if(process.env.TARGET!.length === 34) {
             await transferToWalletAction(client, utxoBalance);
-        } else if(process.env.TARGET!.length === 3 || process.env.TARGET!.length === 4) {
+        } else if(supportedPoolPairs.map(pair => pair.replace('-DFI', '')).includes(process.env.TARGET!)) {
             await swapTokenAction(client, tokenBalances['DFI'], new BigNumber(process.env.DFI_COMPOUND_AMOUNT!), process.env.TARGET!);
-        } else if(process.env.TARGET!.endsWith('-DFI')) {
+        } else if(supportedPoolPairs.includes(process.env.TARGET!)) {
             await provideLiquidityAction(client, tokenBalances['DFI']);
         } else {
             console.log(logDate() + `TARGET does not contain a valid value`);
