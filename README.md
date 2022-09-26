@@ -1,5 +1,7 @@
 # DFI earnings automation for DeFiChain
 
+[![npm (tag)](https://img.shields.io/npm/v/defichain-compound)](https://www.npmjs.com/package/defichain-compound)
+
 ## Introduction
 
 `defichain-compound` is a CLI daemon that is running in parallel with `defid` of the [DeFiChain desktop wallet](https://github.com/DeFiCh/app) or [fullnode](https://github.com/DeFiCh/ain). Its purpose is to execute automatic compounding tasks based on a configuration file.
