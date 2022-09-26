@@ -34,16 +34,5 @@
     "@types/node": "^18.7.22",
     "bignumber.js": "^9.1.0",
     "dotenv": "^16.0.2"
-  },
-  "devDependencies": {
-    "commander": "^9.4.0",
-    "defichain": "^2.58.0",
-    "readline-sync": "^1.4.10",
-    "typescript": "^4.8.3",
-    "@defichain/jellyfish-api-core": "^2.62.0",
-    "@defichain/jellyfish-api-jsonrpc": "^2.62.0",
-    "@types/node": "^18.7.22",
-    "bignumber.js": "^9.1.0",
-    "dotenv": "^16.0.2"
   }
 }
