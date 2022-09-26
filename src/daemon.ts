@@ -7,8 +7,11 @@ let child_process = require('child_process');
 let fs = require('fs');
 
 let RESERVE = new BigNumber(0.1);
+let DEFAULT_CONFIGFILE = '~/.defichain-compound';
+let DEFAULT_CHECK_INTERVAL_MINUTES = '720';
 
 let walletPassphrase = '';
+let daemonInterval: NodeJS.Timer;
 
 function logDate() {
     let tzoffset = (new Date()).getTimezoneOffset() * 60000;
@@ -36,12 +39,12 @@ function daemonize() {
 
 function daemonLoop() {
     checkBalances();
-    setInterval(function() {
+    daemonInterval = setInterval(function() {
         checkBalances();
-    }, parseInt(process.env.CHECK_INTERVAL_MINUTES ?? '720') * 60*1000);
+    }, parseInt(process.env.CHECK_INTERVAL_MINUTES ?? DEFAULT_CHECK_INTERVAL_MINUTES) * 60*1000);
 }
 
-function checkConfig(configFile: string): boolean {
+function checkConfig(): boolean {
     let missingParameters = '';
 
     if(!process.env.RPC_URL)                { missingParameters += 'RCP_URL\n'; }
@@ -53,7 +56,7 @@ function checkConfig(configFile: string): boolean {
     if(!process.env.CHECK_INTERVAL_MINUTES) { missingParameters += 'CHECK_INTERVAL_MINUTES\n'; }
 
     if(missingParameters.length) {
-        console.log(`Missing parameters in ${configFile} config file:\n${missingParameters}`);
+        console.log(`Missing parameters in ${DEFAULT_CONFIGFILE} config file:\n${missingParameters}`);
         return false
     }
     
@@ -102,7 +105,6 @@ async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNu
 }
 
 async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber, amount: BigNumber, target: string): Promise<BigNumber> {
-
     if(tokenBalance.isLessThan(amount)) {
         const amountToConvert = amount.minus(tokenBalance);
         console.log(logDate() +  `Convert ${amountToConvert} UTXO to DFI token`);
@@ -203,26 +205,36 @@ async function checkBalances() {
 
 }
 
+function rereadConfig() {
+    dotenv.config({ path: DEFAULT_CONFIGFILE, override: true });
+    clearInterval(daemonInterval);
+    console.log(logDate() + `Config updated from ${DEFAULT_CONFIGFILE}`);
+    daemonLoop();
+}  
+
 export async function daemon(options: any) {
-    let configFile = options.conf ?? '~/.defichain-compound';
-    dotenv.config({ path: configFile });
+    if(options.conf) { DEFAULT_CONFIGFILE = options.conf; }
+    dotenv.config({ path: DEFAULT_CONFIGFILE });
 
     if (process.env.__daemon) {
         process.on('message', message => {
             walletPassphrase = ( typeof message === 'string' ? message : '' );
             console.log(logDate() + `Daemon started with pid ${process.pid}`);
+            process.on('SIGHUP', () => {
+                rereadConfig();
+            });
             daemonLoop();
         });            
         return;    
     }
 
-    if(checkConfig(configFile) && await checkPassphrase()) {
+    if(checkConfig() && await checkPassphrase()) {
         let pid;
         try {
             pid = fs.readFileSync(process.env.PIDFILE, 'utf8');
         } catch(error) {
-
         }
+
         let alreadyRunning = false;
         if(pid) {
             try {

@@ -48,12 +48,18 @@ PIDFILE=/tmp/defichain-compound.pid
 
 # Interval to check if compounding is needed
 CHECK_INTERVAL_MINUTES=720
+```
 
+### Update Config
+
+The daemon updates its config on SIGHUP. However LOGFILE and PIDFILE are not updated in this scenario. Example:
+```
+kill -HUP $(<"/tmp/defichain-compound.pid")
 ```
 
 ### Wallet Passphrase
 
-In order to initiate transfers `defichain-compound` needs to know the passphrase of the desktop wallet. The recommended and most secure way is to use the interactive prompt when starting the daemon.
+In order to initiate transfers `defichain-compound` needs to know the passphrase of the wallet. The recommended and most secure way is to use the interactive prompt when starting the daemon.
 
 ## Disclaimer
 
