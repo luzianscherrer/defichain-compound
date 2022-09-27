@@ -1,6 +1,10 @@
 # DFI earnings automation for DeFiChain
 
 [![npm](https://img.shields.io/npm/v/defichain-compound)](https://www.npmjs.com/package/defichain-compound)
+[![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/DeFiCh/app/blob/main/LICENSE)
+<a href="https://www.reddit.com/r/defiblockchain/">
+<img alt="Subreddit subscribers" src="https://img.shields.io/reddit/subreddit-subscribers/defiblockchain?style=social">
+</a>
 
 ## Introduction
 
