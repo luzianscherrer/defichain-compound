@@ -13,13 +13,15 @@ let DEFAULT_CHECK_INTERVAL_MINUTES = '720';
 let walletPassphrase = '';
 let daemonInterval: NodeJS.Timer;
 
-function logDate() {
+function logDate() 
+{
     let tzoffset = (new Date()).getTimezoneOffset() * 60000;
     let localIsoTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, -1);
     return (localIsoTime + ' ').replace('T', ' ');
 }
 
-function daemonize() {
+function daemonize() 
+{
     let out = fs.openSync(process.env.LOGFILE, 'a');
     let err = fs.openSync(process.env.LOGFILE, 'a');
 
@@ -37,14 +39,16 @@ function daemonize() {
     console.log(`Logfile: ${process.env.LOGFILE}`);
 }
 
-function daemonLoop() {
+function daemonLoop() 
+{
     checkBalances();
     daemonInterval = setInterval(function() {
         checkBalances();
     }, parseInt(process.env.CHECK_INTERVAL_MINUTES ?? DEFAULT_CHECK_INTERVAL_MINUTES) * 60*1000);
 }
 
-function checkConfig(): boolean {
+function checkConfig(): boolean 
+{
     let missingParameters = '';
 
     if(!process.env.RPC_URL)                { missingParameters += 'RCP_URL\n'; }
@@ -63,7 +67,8 @@ function checkConfig(): boolean {
     return true;
 }
 
-function promptPassphrase(): string {
+function promptPassphrase(): string 
+{
     if(process.env.DEFICHAIN_WALLET_PASSPHRASE) {
         return process.env.DEFICHAIN_WALLET_PASSPHRASE;
     } else {
@@ -74,7 +79,8 @@ function promptPassphrase(): string {
     }
 }
 
-async function checkPassphrase(): Promise<boolean> {
+async function checkPassphrase(): Promise<boolean> 
+{
     const client = new JsonRpcClient(process.env.RPC_URL!)
     const passphrase = promptPassphrase();    
     try {
@@ -92,7 +98,8 @@ async function checkPassphrase(): Promise<boolean> {
     return true;
 }
 
-async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNumber) {
+async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNumber) 
+{
     const [symbolOfOtherToken] = process.env.TARGET!.split('-');
     const amountOfDfiToken = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).dividedBy(2);
     const amountOfOtherToken = await swapTokenAction(client, tokenBalance, amountOfDfiToken, symbolOfOtherToken);
@@ -104,7 +111,8 @@ async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNu
     console.log(logDate() +  `Add pool liquidity transaction: ${txid}`);
 }
 
-async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber, amount: BigNumber, target: string): Promise<BigNumber> {
+async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber, amount: BigNumber, target: string): Promise<BigNumber> 
+{
     if(tokenBalance.isLessThan(amount)) {
         const amountToConvert = amount.minus(tokenBalance);
         console.log(logDate() +  `Convert ${amountToConvert} UTXO to DFI token`);
@@ -152,7 +160,8 @@ async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber, a
     return tokenBalanceAfter.minus(tokenBalanceBefore);
 }
 
-async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNumber) {
+async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNumber) 
+{
     const amount = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!);
 
     if(utxoBalance.isLessThan(amount.plus(RESERVE))) {
@@ -175,7 +184,8 @@ async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNum
     console.log(logDate() +  `Send transaction: ${txid}`);
 }
 
-async function checkBalances() {
+async function checkBalances() 
+{
     const client = new JsonRpcClient(process.env.RPC_URL!)
     const utxoBalance = await client.wallet.getBalance();
     const tokenBalances = await client.account.getTokenBalances({limit: 100}, true, { symbolLookup: true });
@@ -205,14 +215,16 @@ async function checkBalances() {
 
 }
 
-function rereadConfig() {
+function rereadConfig() 
+{
     dotenv.config({ path: DEFAULT_CONFIGFILE, override: true });
     clearInterval(daemonInterval);
     console.log(logDate() + `Config updated from ${DEFAULT_CONFIGFILE}`);
     daemonLoop();
 }  
 
-export async function daemon(options: any) {
+export async function daemon(options: any) 
+{
     if(options.conf) { DEFAULT_CONFIGFILE = options.conf; }
     dotenv.config({ path: DEFAULT_CONFIGFILE });
 
