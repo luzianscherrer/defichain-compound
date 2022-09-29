@@ -8,7 +8,7 @@
 
 ## Introduction
 
-`defichain-compound` is a CLI daemon that is running in parallel with `defid` of the [DeFiChain desktop wallet](https://github.com/DeFiCh/app) or [fullnode](https://github.com/DeFiCh/ain). Its purpose is to execute automatic compounding tasks based on a configuration file.
+`defichain-compound` is a CLI daemon that is running in parallel with `defid` of the [DeFiChain desktop wallet](https://github.com/DeFiCh/app) or [fullnode](https://github.com/DeFiCh/ain). Its purpose is to execute automatic compounding actions based on a configuration file.
 
 ## Installation
 
@@ -29,7 +29,6 @@ The parameter `TARGET` in the config file defines the compounding action. The fo
 | Add pool liquidity | Pool pair symbol | `BTC-DFI` | Compounding BTC-DFI pool liquidity mining (currently only DFI pairs are supported) |
 | Token swap | Token symbol | `ETH` | DCA into ETH token |
 | Wallet transfer | DeFiChain wallet address | `bDEl...wxTgV` | Transfer DFI to [Cake](https://www.cakedefi.com) for staking |
-
 
 ### Example Config File
 
@@ -54,9 +53,31 @@ PIDFILE=/tmp/defichain-compound.pid
 CHECK_INTERVAL_MINUTES=720
 ```
 
+### Rotating Actions
+
+`TARGET` can be set to multiple values separated by a single space. The actions are then rotated in order. To keep state across restarts `defichain-compound` will rewrite the config file so that the first listed action in `TARGET` is always the one to execute next.
+
+**Example 1**
+```
+TARGET=ETH-DFI BTC-DFI DOGE
+```
+When `DFI_COMPOUND_AMOUNT` is reached for the first time buy into the `ETH-DFI` pool. When again `DFI_COMPOUND_AMOUNT` is reached buy into the `BTC-DFI` pool. When again `DFI_COMPOUND_AMOUNT` is reached buy `DOGE`. Repeat infinitely.
+
+**Example 2**
+```
+TARGET=BTC-DFI BTC-DFI ETH-DFI
+```
+Invest into the `BTC-DFI` and `ETH-DFI` pools at a 2:1 ratio.
+
+**Example 3**
+```
+TARGET=ETH-DFI bDEl...wxTgV
+```
+Invest half of the earnings into the `ETH-DFI` pool and transfer the other half to `bDEl...wxTgV` for staking.
+
 ### Update Config
 
-The daemon updates its config on SIGHUP. However LOGFILE and PIDFILE are not updated in this scenario. Example:
+The daemon updates its config on SIGHUP. Note that LOGFILE and PIDFILE are not updated in this scenario. Example:
 ```
 kill -HUP $(<"/tmp/defichain-compound.pid")
 ```

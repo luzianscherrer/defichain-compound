@@ -1,10 +1,11 @@
 import { JsonRpcClient } from '@defichain/jellyfish-api-jsonrpc'
 import { RpcApiError } from '@defichain/jellyfish-api-core'
 import { BigNumber } from 'bignumber.js'
-var readlineSync = require('readline-sync');
 import dotenv from 'dotenv';
-let child_process = require('child_process');
-let fs = require('fs');
+const readlineSync = require('readline-sync');
+const child_process = require('child_process');
+const fs = require('fs');
+const untildify = require('untildify');
 
 let RESERVE = new BigNumber(0.1);
 let DEFAULT_CONFIGFILE = '~/.defichain-compound';
@@ -22,8 +23,8 @@ function logDate()
 
 function daemonize() 
 {
-    let out = fs.openSync(process.env.LOGFILE, 'a');
-    let err = fs.openSync(process.env.LOGFILE, 'a');
+    let out = fs.openSync(untildify(process.env.LOGFILE), 'a');
+    let err = fs.openSync(untildify(process.env.LOGFILE), 'a');
 
     let env = process.env;
     env.__daemon = 'true';
@@ -35,7 +36,7 @@ function daemonize()
     child.disconnect();
     child.unref();
     console.log(`Daemon started in background with pid ${child.pid}`);
-    fs.writeFileSync(process.env.PIDFILE, `${child.pid}\n`);
+    fs.writeFileSync(untildify(process.env.PIDFILE), `${child.pid}\n`);
     console.log(`Logfile: ${process.env.LOGFILE}`);
 }
 
@@ -200,16 +201,28 @@ async function checkBalances()
 
         await client.call('walletpassphrase', [ walletPassphrase, 5*60 ], 'bignumber');
 
-        if(process.env.TARGET!.length === 34) {
+        const targets = process.env.TARGET!.split(/\s(.*)/s);
+        if(targets[0].match(/[^ ]{34}/)) {
             await transferToWalletAction(client, utxoBalance);
-        } else if(supportedPoolPairs.map(pair => pair.replace('-DFI', '')).includes(process.env.TARGET!)) {
+        } else if(supportedPoolPairs.map(pair => pair.replace('-DFI', '')).includes(targets[0])) {
             await swapTokenAction(client, tokenBalances['DFI'], new BigNumber(process.env.DFI_COMPOUND_AMOUNT!), process.env.TARGET!);
-        } else if(supportedPoolPairs.includes(process.env.TARGET!)) {
+        } else if(supportedPoolPairs.includes(targets[0])) {
             await provideLiquidityAction(client, tokenBalances['DFI']);
         } else {
             console.log(logDate() + `TARGET does not contain a valid value`);
         }
 
+        if(targets.length == 3) {
+            try {
+                let content = fs.readFileSync(DEFAULT_CONFIGFILE, 'utf8');
+                content = content.replace(/^TARGET=.*$/m, `TARGET=${targets[1]} ${targets[0]}`);
+                fs.writeFileSync(DEFAULT_CONFIGFILE, content, 'utf8');
+                process.env.TARGET = `${targets[1]} ${targets[0]}`;
+            } catch(error) {
+                console.log(logDate() + `Rewriting of ${DEFAULT_CONFIGFILE} failed: `, error);
+            }
+        }
+        
         await client.call('walletlock', [], 'bignumber');
     }
 
@@ -226,6 +239,7 @@ function rereadConfig()
 export async function daemon(options: any) 
 {
     if(options.conf) { DEFAULT_CONFIGFILE = options.conf; }
+    DEFAULT_CONFIGFILE = untildify(DEFAULT_CONFIGFILE);
     dotenv.config({ path: DEFAULT_CONFIGFILE });
 
     if (process.env.__daemon) {
@@ -243,7 +257,7 @@ export async function daemon(options: any)
     if(checkConfig() && await checkPassphrase()) {
         let pid;
         try {
-            pid = fs.readFileSync(process.env.PIDFILE, 'utf8');
+            pid = fs.readFileSync(untildify(process.env.PIDFILE, 'utf8'));
         } catch(error) {
         }
 
