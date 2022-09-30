@@ -105,6 +105,12 @@ async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNu
 {
     const [symbolOfOtherToken] = process.env.TARGET!.split('-');
     const amountOfDfiToken = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).dividedBy(2);
+
+    if(tokenBalance.isLessThan(new BigNumber(process.env.DFI_COMPOUND_AMOUNT!))) {
+        const amountToConvert = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).minus(tokenBalance);
+        await convertUtxoToAccount(client, amountToConvert, new BigNumber(process.env.DFI_COMPOUND_AMOUNT!));
+    }
+
     const amountOfOtherToken = await swapTokenAction(client, tokenBalance, amountOfDfiToken, symbolOfOtherToken);
     console.log(logDate() +  `Add pool liquidity ${amountOfOtherToken} ${symbolOfOtherToken} / ${amountOfDfiToken} DFI`);
     const txid = await client.poolpair.addPoolLiquidity(
@@ -114,23 +120,29 @@ async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNu
     console.log(logDate() +  `Add pool liquidity transaction: ${txid}`);
 }
 
+async function convertUtxoToAccount(client: JsonRpcClient, amountToConvert: BigNumber, amountRequired: BigNumber)
+{
+    console.log(logDate() +  `Convert ${amountToConvert} UTXO to DFI token`);
+
+    const hash = await client.account.utxosToAccount(
+        { [process.env.WALLET_ADDRESS!]: `${amountToConvert.toFixed(8)}@DFI` }
+    );
+    console.log(logDate() + `Conversion transaction: ${hash}`);
+
+    console.log(logDate() + `Waiting for conversion to complete`);
+    let dfiTokenBalance;
+    do {
+        await new Promise(r => setTimeout(r, 5*1000));
+        dfiTokenBalance = await getDfiTokenBalance(client);
+    } while(dfiTokenBalance.isLessThan(amountRequired));
+    console.log(logDate() + `Conversion completed`);
+}
+
 async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber, amount: BigNumber, target: string): Promise<BigNumber> 
 {
     if(tokenBalance.isLessThan(amount)) {
         const amountToConvert = amount.minus(tokenBalance);
-        console.log(logDate() +  `Convert ${amountToConvert} UTXO to DFI token`);
-
-        const hash = await client.account.utxosToAccount(
-            { [process.env.WALLET_ADDRESS!]: `${amountToConvert.toFixed(8)}@DFI` }
-        );
-        console.log(logDate() + `Conversion transaction: ${hash}`);
-
-        console.log(logDate() + `Waiting for conversion to complete`);
-        while(tokenBalance.isLessThan(amount)) {
-            await new Promise(r => setTimeout(r, 5*1000));
-            tokenBalance = await getDfiTokenBalance(client);
-        }
-        console.log(logDate() + `Conversion completed`);
+        await convertUtxoToAccount(client, amountToConvert, amount);
     }
 
     const tokenBalancesBefore = await client.account.getTokenBalances({limit: TOKEN_LIMIT}, true, { symbolLookup: true });
@@ -149,6 +161,7 @@ async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber, a
     });
     console.log(logDate() + `Swap transaction: ${txid}`);
 
+    console.log(logDate() + `Waiting for swap to complete`);
     let tokenBalanceAfter = tokenBalanceBefore;
     while(tokenBalanceAfter.isEqualTo(tokenBalanceBefore)) {
         await new Promise(r => setTimeout(r, 5*1000));
