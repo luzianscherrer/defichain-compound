@@ -10,6 +10,7 @@ const untildify = require('untildify');
 let RESERVE = new BigNumber(0.1);
 let DEFAULT_CONFIGFILE = '~/.defichain-compound';
 let DEFAULT_CHECK_INTERVAL_MINUTES = '720';
+let RPC_TIMEOUT = 5*60*1000;
 
 let walletPassphrase = '';
 let daemonInterval: NodeJS.Timer;
@@ -82,7 +83,7 @@ function promptPassphrase(): string
 
 async function checkPassphrase(): Promise<boolean> 
 {
-    const client = new JsonRpcClient(process.env.RPC_URL!)
+    const client = new JsonRpcClient(process.env.RPC_URL!, {timeout: RPC_TIMEOUT})
     const passphrase = promptPassphrase();    
     try {
         await client.call('walletpassphrase', [ passphrase, 5*60 ], 'bignumber');
@@ -187,7 +188,7 @@ async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNum
 
 async function checkBalances() 
 {
-    const client = new JsonRpcClient(process.env.RPC_URL!, {timeout: 5*60*1000})
+    const client = new JsonRpcClient(process.env.RPC_URL!, {timeout: RPC_TIMEOUT})
     const utxoBalance = await client.wallet.getBalance();
     const tokenBalances = await client.account.getTokenBalances({limit: 100}, true, { symbolLookup: true });
 
