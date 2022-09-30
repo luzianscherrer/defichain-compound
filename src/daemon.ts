@@ -187,7 +187,7 @@ async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNum
 
 async function checkBalances() 
 {
-    const client = new JsonRpcClient(process.env.RPC_URL!)
+    const client = new JsonRpcClient(process.env.RPC_URL!, {timeout: 5*60*1000})
     const utxoBalance = await client.wallet.getBalance();
     const tokenBalances = await client.account.getTokenBalances({limit: 100}, true, { symbolLookup: true });
 
