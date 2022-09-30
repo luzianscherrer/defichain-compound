@@ -10,7 +10,8 @@ const untildify = require('untildify');
 let RESERVE = new BigNumber(0.1);
 let DEFAULT_CONFIGFILE = '~/.defichain-compound';
 let DEFAULT_CHECK_INTERVAL_MINUTES = '720';
-let RPC_TIMEOUT = 5*60*1000;
+let RPC_TIMEOUT = 10*60*1000;
+let TOKEN_LIMIT = 1000;
 
 let walletPassphrase = '';
 let daemonInterval: NodeJS.Timer;
@@ -127,13 +128,12 @@ async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber, a
         console.log(logDate() + `Waiting for conversion to complete`);
         while(tokenBalance.isLessThan(amount)) {
             await new Promise(r => setTimeout(r, 5*1000));
-            const tokenBalances = await client.account.getTokenBalances({limit: 100}, true, { symbolLookup: true });
-            tokenBalance = tokenBalances['DFI'];
+            tokenBalance = await getDfiTokenBalance(client);
         }
         console.log(logDate() + `Conversion completed`);
     }
 
-    const tokenBalancesBefore = await client.account.getTokenBalances({limit: 100}, true, { symbolLookup: true });
+    const tokenBalancesBefore = await client.account.getTokenBalances({limit: TOKEN_LIMIT}, true, { symbolLookup: true });
     let tokenBalanceBefore  = new BigNumber(0);
     if(tokenBalancesBefore[target]) {
         tokenBalanceBefore = tokenBalancesBefore[target];
@@ -152,7 +152,7 @@ async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber, a
     let tokenBalanceAfter = tokenBalanceBefore;
     while(tokenBalanceAfter.isEqualTo(tokenBalanceBefore)) {
         await new Promise(r => setTimeout(r, 5*1000));
-        const tokenBalancesAfter = await client.account.getTokenBalances({limit: 100}, true, { symbolLookup: true });
+        const tokenBalancesAfter = await client.account.getTokenBalances({limit: 1000}, true, { symbolLookup: true });
         if(tokenBalancesAfter[target]) {
             tokenBalanceAfter = tokenBalancesAfter[target];
         }
@@ -186,18 +186,60 @@ async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNum
     console.log(logDate() +  `Send transaction: ${txid}`);
 }
 
+async function getDfiTokenBalance(client: JsonRpcClient): Promise<BigNumber> 
+{
+    const tokenBalances = await client.account.getTokenBalances({limit: TOKEN_LIMIT}, true, { symbolLookup: true });
+    const dfiTokenBalance = tokenBalances['DFI'];
+    return dfiTokenBalance;
+}
+
+async function consolidateDfiTokens(client: JsonRpcClient)
+{
+    console.log(logDate() + `Consolidation needed because DFI tokens are spread accross accounts`);
+
+    await client.call('walletpassphrase', [ walletPassphrase, 5*60 ], 'bignumber');
+
+    const accounts = await client.account.listAccounts({limit: TOKEN_LIMIT}, false, {indexedAmounts: true, isMineOnly: true});
+    for(const account of accounts) {
+        if(account.owner !== process.env.WALLET_ADDRESS! && account.amount['0'] !== undefined) {
+            console.log(logDate() + `Consolidating of ${account.amount['0']} DFI from ${account.owner} to ${process.env.WALLET_ADDRESS!}`);
+            const txid = await client.account.accountToAccount(account.owner, { [process.env.WALLET_ADDRESS!]: `${account.amount['0'].toFixed(8)}@DFI` });
+            console.log(logDate() + `Consolidation transaction: ${txid}`);
+        }
+    }
+
+    await client.call('walletlock', [], 'bignumber');
+
+    console.log(logDate() + `Waiting for consolidation to complete`);
+    let dfiTokenBalance, dfiAccountTokenBalance;
+    do {
+        await new Promise(r => setTimeout(r, 5*1000));
+        dfiTokenBalance = await getDfiTokenBalance(client);
+        const accountTokenBalances = await client.account.getAccount(process.env.WALLET_ADDRESS!, {}, {indexedAmounts: true});
+        dfiAccountTokenBalance = new BigNumber(accountTokenBalances['0']);    
+    } while(dfiTokenBalance.isEqualTo(dfiAccountTokenBalance) == false);
+    console.log(logDate() + `Consolidation completed`);
+
+}
+
 async function checkBalances() 
 {
     const client = new JsonRpcClient(process.env.RPC_URL!, {timeout: RPC_TIMEOUT})
     const utxoBalance = await client.wallet.getBalance();
-    const tokenBalances = await client.account.getTokenBalances({limit: 100}, true, { symbolLookup: true });
+    const dfiTokenBalance = await getDfiTokenBalance(client);
 
-    console.log(logDate() + `Balance: ${utxoBalance.plus(tokenBalances['DFI'])} (DFI token: ${tokenBalances['DFI']} / UTXO: ${utxoBalance})`);
+    console.log(logDate() + `Balance: ${utxoBalance.plus(dfiTokenBalance)} (DFI token: ${dfiTokenBalance} / UTXO: ${utxoBalance})`);
 
-    if( utxoBalance.plus(tokenBalances['DFI']).isGreaterThan(new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).plus(RESERVE)) ) {
+    const accountTokenBalances = await client.account.getAccount(process.env.WALLET_ADDRESS!, {}, {indexedAmounts: true});
+    const dfiAccountTokenBalance = new BigNumber(accountTokenBalances['0']);
+    if(dfiTokenBalance.isEqualTo(dfiAccountTokenBalance) == false) {
+        await consolidateDfiTokens(client);
+    }
+
+    if( utxoBalance.plus(dfiTokenBalance).isGreaterThan(new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).plus(RESERVE)) ) {
         console.log(logDate() + `Compound threshold of ${BigNumber(process.env.DFI_COMPOUND_AMOUNT!).plus(RESERVE)} (${BigNumber(process.env.DFI_COMPOUND_AMOUNT!)} + ${RESERVE}) reached`);
 
-        const poolPairs = await client.poolpair.listPoolPairs({start: 0, including_start: true, limit: 1000}, false);
+        const poolPairs = await client.poolpair.listPoolPairs({start: 0, including_start: true, limit: TOKEN_LIMIT}, false);
         const supportedPoolPairs = Object.entries(poolPairs).filter(([key, value]) => value.symbol.endsWith('-DFI')).map(pair => pair[1].symbol);    
 
         await client.call('walletpassphrase', [ walletPassphrase, 5*60 ], 'bignumber');
@@ -206,9 +248,9 @@ async function checkBalances()
         if(targets[0].match(/[^ ]{34}/)) {
             await transferToWalletAction(client, utxoBalance);
         } else if(supportedPoolPairs.map(pair => pair.replace('-DFI', '')).includes(targets[0])) {
-            await swapTokenAction(client, tokenBalances['DFI'], new BigNumber(process.env.DFI_COMPOUND_AMOUNT!), process.env.TARGET!);
+            await swapTokenAction(client, dfiTokenBalance, new BigNumber(process.env.DFI_COMPOUND_AMOUNT!), process.env.TARGET!);
         } else if(supportedPoolPairs.includes(targets[0])) {
-            await provideLiquidityAction(client, tokenBalances['DFI']);
+            await provideLiquidityAction(client, dfiTokenBalance);
         } else {
             console.log(logDate() + `TARGET does not contain a valid value`);
         }
