@@ -84,7 +84,9 @@ kill -HUP $(<"/tmp/defichain-compound.pid")
 
 ### Wallet Passphrase
 
-In order to sign transactions `defichain-compound` needs to know the passphrase of the wallet. The recommended and most secure way is to use the interactive prompt when starting the daemon.
+In order to sign transactions `defichain-compound` needs to know the passphrase of the wallet. The recommended and most secure way is to use the interactive prompt when starting the daemon. 
+
+If fully unattended operation including startup is desired, the passphrase can also be passed via the `DEFICHAIN_WALLET_PASSPHRASE` environment variable. Upon forking its child process into daemon mode `defichain-compound` will then delete the variable from the environment.
 
 ## Disclaimer
 
