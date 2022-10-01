@@ -103,14 +103,14 @@ async function checkPassphrase(): Promise<boolean>
 
 async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNumber) 
 {
-    const [symbolOfOtherToken] = process.env.TARGET!.split('-');
-    const amountOfDfiToken = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).dividedBy(2);
-
     if(tokenBalance.isLessThan(new BigNumber(process.env.DFI_COMPOUND_AMOUNT!))) {
         const amountToConvert = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).minus(tokenBalance);
         await convertUtxoToAccount(client, amountToConvert, new BigNumber(process.env.DFI_COMPOUND_AMOUNT!));
+        tokenBalance = await getDfiTokenBalance(client);
     }
 
+    const [symbolOfOtherToken] = process.env.TARGET!.split('-');
+    const amountOfDfiToken = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).dividedBy(2);
     const amountOfOtherToken = await swapTokenAction(client, tokenBalance, amountOfDfiToken, symbolOfOtherToken);
     console.log(logDate() +  `Add pool liquidity ${amountOfOtherToken} ${symbolOfOtherToken} / ${amountOfDfiToken} DFI`);
     const txid = await client.poolpair.addPoolLiquidity(
