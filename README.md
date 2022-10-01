@@ -43,7 +43,7 @@ DFI_COMPOUND_AMOUNT=5
 WALLET_ADDRESS=address
 
 # Target for compounding action (see documentation)
-TARGET=wallet address or token symbol or pool pair symbol
+TARGET=wallet address(es) or token symbol(s) or pool pair symbol(s)
 
 # Logfile and pidfile
 LOGFILE=/tmp/defichain-compound.log
