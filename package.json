@@ -27,12 +27,16 @@
   "dependencies": {
     "@defichain/jellyfish-api-core": "^2.62.0",
     "@defichain/jellyfish-api-jsonrpc": "^2.62.0",
+    "@defichain/whale-api-client": "^2.64.0",
     "@types/node": "^18.7.22",
     "bignumber.js": "^9.1.0",
+    "chalk": "^4.1.2",
+    "coingecko-api": "^1.0.10",
     "commander": "^9.4.0",
     "defichain": "^2.58.0",
     "dotenv": "^16.0.2",
     "readline-sync": "^1.4.10",
+    "table": "^6.8.0",
     "typescript": "^4.8.3",
     "untildify": "^4.0.0"
   }

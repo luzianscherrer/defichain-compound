@@ -1,7 +1,10 @@
-import { JsonRpcClient } from '@defichain/jellyfish-api-jsonrpc'
-import { RpcApiError } from '@defichain/jellyfish-api-core'
-import { BigNumber } from 'bignumber.js'
+import { JsonRpcClient } from '@defichain/jellyfish-api-jsonrpc';
+import { RpcApiError } from '@defichain/jellyfish-api-core';
+import { BigNumber } from 'bignumber.js';
 import dotenv from 'dotenv';
+import { fiatPriceOf } from './prices';
+import { table } from 'table';
+import chalk from 'chalk';
 const readlineSync = require('readline-sync');
 const child_process = require('child_process');
 const fs = require('fs');
@@ -290,13 +293,78 @@ function rereadConfig()
     clearInterval(daemonInterval);
     console.log(logDate() + `Config updated from ${DEFAULT_CONFIGFILE}`);
     daemonLoop();
-}  
+}
+
+function rightAlign(str: string, totalLength: number): string 
+{
+    return ' '.repeat(totalLength - str.length) + str;
+}
+
+async function showSummary() 
+{
+    const client = new JsonRpcClient(process.env.RPC_URL!, {timeout: RPC_TIMEOUT})
+    const utxoBalance = await client.wallet.getBalance();
+    const tokenBalances = await client.account.getTokenBalances({limit: TOKEN_LIMIT}, true, { symbolLookup: true });
+      
+    if(tokenBalances['DFI']) {
+        tokenBalances['DFI'] = tokenBalances['DFI'].plus(utxoBalance);
+    } else {
+        tokenBalances['DFIX'] = utxoBalance;
+    }
+
+    let tableConfig = { 
+        columns: [
+            { width: 10 },
+            { width: 20 },
+            { width: 20 }
+        ],       
+        drawVerticalLine: (lineIndex: number, columnCount: number) => {
+            return lineIndex === 0 || lineIndex === columnCount;
+        }            
+    }
+    let tableData = [
+        [chalk.bold('Token'), 
+        chalk.bold(rightAlign('Amount', tableConfig.columns[1].width)), 
+        chalk.bold(rightAlign('USD Value', tableConfig.columns[2].width))]
+    ];
+
+    let totalFiat = 0;
+    for(const item of Object.keys(tokenBalances)) {
+        if(item.match(/.*-.*/)) {
+            const [tokenA, tokenB] = item.split('-');
+            const poolPair = await client.poolpair.getPoolPair(item);
+            const amountTokenA = tokenBalances[item].dividedBy(Object.values(poolPair)[0].totalLiquidity).times(Object.values(poolPair)[0].reserveA);
+            const amountTokenB = tokenBalances[item].dividedBy(Object.values(poolPair)[0].totalLiquidity).times(Object.values(poolPair)[0].reserveB);
+            const fiatPriceTokenA = await fiatPriceOf(tokenA);
+            const fiatPriceTokenB = await fiatPriceOf(tokenB);
+
+            let itemsFiat = (new BigNumber(fiatPriceTokenA).times(amountTokenA).plus(new BigNumber(fiatPriceTokenB).times(amountTokenB))).toNumber();
+            tableData.push([item, rightAlign(tokenBalances[item].toFixed(8), tableConfig.columns[1].width), rightAlign(itemsFiat.toFixed(2), tableConfig.columns[2].width)]);
+            totalFiat += itemsFiat;
+        } else {
+            const fiatPriceToken = await fiatPriceOf(item);
+            let itemFiat = (tokenBalances[item].times(new BigNumber(fiatPriceToken))).toNumber();
+            tableData.push([item, rightAlign(tokenBalances[item].toFixed(8), tableConfig.columns[1].width), rightAlign(itemFiat.toFixed(2), tableConfig.columns[2].width)]);
+            totalFiat += itemFiat;
+        }
+    }
+
+    tableData.push([chalk.bold('Total'), '', chalk.bold(rightAlign(totalFiat.toFixed(2), tableConfig.columns[2].width))]);
+    console.log(table(tableData, tableConfig));
+}
 
 export async function daemon(options: any) 
 {
     if(options.conf) { DEFAULT_CONFIGFILE = options.conf; }
     DEFAULT_CONFIGFILE = untildify(DEFAULT_CONFIGFILE);
     dotenv.config({ path: DEFAULT_CONFIGFILE });
+
+    if(options.showSummary) {
+        if(checkConfig()) {
+            await showSummary();
+        }
+        process.exit(0);
+    }
 
     if (process.env.__daemon) {
         process.on('message', message => {
