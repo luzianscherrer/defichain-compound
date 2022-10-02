@@ -88,6 +88,12 @@ In order to sign transactions `defichain-compound` needs to know the passphrase 
 
 If fully unattended operation including startup is desired, the passphrase can also be passed via the `DEFICHAIN_WALLET_PASSPHRASE` environment variable. Upon forking its child process into daemon mode `defichain-compound` will then delete the variable from the environment.
 
+## Utility Functions
+
+### Holdings Summary
+
+When started with the `--summary` option, instead of going into daemon mode an overview of all holdings in the wallet is shown. This overview also contains the respective USD value for each position and the overall total.
+
 ## Disclaimer
 
 This is not financial advice. Please only run this code if you fully understand what it is doing. This code is provided as-is with no warranty. I take no responsibility for lost funds or any other damage that it might cause. 
