@@ -364,7 +364,7 @@ export async function daemon(options: any)
     DEFAULT_CONFIGFILE = untildify(DEFAULT_CONFIGFILE);
     dotenv.config({ path: DEFAULT_CONFIGFILE });
 
-    if(options.showSummary) {
+    if(options.summary) {
         if(checkConfig()) {
             await showSummary();
         }
