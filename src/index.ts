@@ -9,7 +9,7 @@ program
     .description(pj.description)
     .version(pj.version)
     .option('--conf <config-file>', 'config file location (default: ~/.defichain-compound)')
-    .option('--show-summary', 'show summary of all holdings in USD and exit')
+    .option('--summary', 'show summary of all holdings in USD and exit')
     .action((options) => {
         daemon(options);
     });
