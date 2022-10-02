@@ -322,11 +322,7 @@ async function showSummary()
             return lineIndex === 0 || lineIndex === columnCount;
         }            
     }
-    let tableData = [
-        [chalk.bold('Token'), 
-        chalk.bold(rightAlign('Amount', tableConfig.columns[1].width)), 
-        chalk.bold(rightAlign('USD Value', tableConfig.columns[2].width))]
-    ];
+    let tableContent: [string, string, string][] = [];
 
     let totalFiat = 0;
     for(const item of Object.keys(tokenBalances)) {
@@ -339,18 +335,27 @@ async function showSummary()
             const fiatPriceTokenB = await fiatPriceOf(tokenB);
 
             let itemsFiat = (new BigNumber(fiatPriceTokenA).times(amountTokenA).plus(new BigNumber(fiatPriceTokenB).times(amountTokenB))).toNumber();
-            tableData.push([item, rightAlign(tokenBalances[item].toFixed(8), tableConfig.columns[1].width), rightAlign(itemsFiat.toFixed(2), tableConfig.columns[2].width)]);
+            // tableData.push([item, rightAlign(tokenBalances[item].toFixed(8), tableConfig.columns[1].width), rightAlign(itemsFiat.toFixed(2), tableConfig.columns[2].width)]);
+            tableContent.push([item, tokenBalances[item].toFixed(8),itemsFiat.toFixed(2) ]);
             totalFiat += itemsFiat;
         } else {
             const fiatPriceToken = await fiatPriceOf(item);
             let itemFiat = (tokenBalances[item].times(new BigNumber(fiatPriceToken))).toNumber();
-            tableData.push([item, rightAlign(tokenBalances[item].toFixed(8), tableConfig.columns[1].width), rightAlign(itemFiat.toFixed(2), tableConfig.columns[2].width)]);
+            // tableData.push([item, rightAlign(tokenBalances[item].toFixed(8), tableConfig.columns[1].width), rightAlign(itemFiat.toFixed(2), tableConfig.columns[2].width)]);
+            tableContent.push([item, tokenBalances[item].toFixed(8), itemFiat.toFixed(2)]);
             totalFiat += itemFiat;
         }
     }
 
-    tableData.push([chalk.bold('Total'), '', chalk.bold(rightAlign(totalFiat.toFixed(2), tableConfig.columns[2].width))]);
-    console.log(table(tableData, tableConfig));
+    tableContent.sort((a, b) => b[2].localeCompare(a[2], 'en', {numeric: true}));
+    tableContent.unshift(['Token', 'Amount', 'USD Value']);
+    tableContent.push(['Total', '', totalFiat.toFixed(2)]);
+
+    let alignedTableContent = tableContent.map(row => [row[0], rightAlign(row[1], tableConfig.columns[1].width), rightAlign(row[2], tableConfig.columns[2].width)]);
+    alignedTableContent[0] = alignedTableContent[0].map(cell => chalk.bold(cell));
+    alignedTableContent[alignedTableContent.length-1] = alignedTableContent[alignedTableContent.length-1].map(cell => chalk.bold(cell));
+
+    console.log(table(alignedTableContent, tableConfig));
 }
 
 export async function daemon(options: any) 
