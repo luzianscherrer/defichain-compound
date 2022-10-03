@@ -1,8 +1,6 @@
 import { JsonRpcClient } from '@defichain/jellyfish-api-jsonrpc';
-import { PoolPairInfo, PoolPairsResult } from '@defichain/jellyfish-api-core/dist/category/poolpair'
+import { PoolPairsResult } from '@defichain/jellyfish-api-core/dist/category/poolpair'
 const CoinGecko = require('coingecko-api');
-
-let RPC_TIMEOUT = 10*60*1000;
 
 const coinGeckoApiClient = new CoinGecko();
 
