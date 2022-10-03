@@ -1,34 +1,37 @@
-import { WhaleApiClient } from '@defichain/whale-api-client';
+import { JsonRpcClient } from '@defichain/jellyfish-api-jsonrpc';
+import { PoolPairInfo, PoolPairsResult } from '@defichain/jellyfish-api-core/dist/category/poolpair'
 const CoinGecko = require('coingecko-api');
 
-const whaleApiClient = new WhaleApiClient({
-    url: 'https://ocean.defichain.com',
-    timeout: 60000,
-    version: 'v0',
-    network: 'mainnet'
-});
+let RPC_TIMEOUT = 10*60*1000;
 
 const coinGeckoApiClient = new CoinGecko();
 
-let fiatPriceCacheDuration = 60*1000;
-let fiatPriceCache: {[key: string]: number} = {};
-let fiatPriceCacheTimestamp = 0;
+let priceCacheDuration = 60*1000;
+let priceCache: {[key: string]: number} = {};
+let poolPairsCache: PoolPairsResult = {};
+let cacheTimestamp = 0;
 
-export async function fiatPriceOf(token: string): Promise<number> 
+export async function priceOf(client: JsonRpcClient, token: string, currency: string): Promise<number> 
 {
-    if(fiatPriceCacheTimestamp < new Date().valueOf()-fiatPriceCacheDuration) {
-        fiatPriceCache = {};
-        fiatPriceCacheTimestamp = new Date().valueOf();
+    if(cacheTimestamp < new Date().valueOf()-priceCacheDuration) {
+        priceCache = {'DFI': 1};
+        poolPairsCache = await client.poolpair.listPoolPairs({start: 0, including_start: true, limit: 1000});
+        cacheTimestamp = new Date().valueOf();
     }
-    
-    if(fiatPriceCache[token] === undefined) {
-        if(token === 'DUSD') {
-            let priceData = await coinGeckoApiClient.simple.price({ ids: ['decentralized-usd'], vs_currencies: ['usd'] });
-            fiatPriceCache[token] = parseFloat(priceData.data['decentralized-usd'].usd);
-        } else {
-            const ret = await whaleApiClient.prices.get(token, 'USD');
-            fiatPriceCache[token] = Number(ret.price.aggregated.amount);    
+
+    if(priceCache[currency] === undefined) {
+        let priceData = await coinGeckoApiClient.simple.price({ ids: ['defichain'], vs_currencies: [currency] });
+        priceCache[currency] = parseFloat(priceData.data['defichain'][currency.toLocaleLowerCase()]);
+    }
+
+    if(priceCache[token] === undefined) {
+        const pair = Object.values(poolPairsCache).find(pair => pair.symbol.startsWith(token));
+        const [tokenA, tokenB] = pair!.symbol.split(/-/);
+        if(priceCache[tokenB] === undefined) {
+            await priceOf(client, tokenB, currency);
         }
+        priceCache[token] = Number(pair?.['reserveB/reserveA']);
     }
-    return fiatPriceCache[token];
+
+    return priceCache[token]*priceCache[currency];
 }

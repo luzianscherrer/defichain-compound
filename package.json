@@ -27,7 +27,6 @@
   "dependencies": {
     "@defichain/jellyfish-api-core": "^2.62.0",
     "@defichain/jellyfish-api-jsonrpc": "^2.62.0",
-    "@defichain/whale-api-client": "^2.64.0",
     "@types/node": "^18.7.22",
     "bignumber.js": "^9.1.0",
     "chalk": "^4.1.2",

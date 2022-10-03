@@ -2,7 +2,7 @@ import { JsonRpcClient } from '@defichain/jellyfish-api-jsonrpc';
 import { RpcApiError } from '@defichain/jellyfish-api-core';
 import { BigNumber } from 'bignumber.js';
 import dotenv from 'dotenv';
-import { fiatPriceOf } from './prices';
+import { priceOf } from './prices';
 import { table } from 'table';
 import chalk from 'chalk';
 const readlineSync = require('readline-sync');
@@ -300,8 +300,14 @@ function rightAlign(str: string, totalLength: number): string
     return ' '.repeat(totalLength - str.length) + str;
 }
 
-async function showSummary() 
+async function showHoldingsSummary(currency?: string) 
 {
+    if(currency == undefined) {
+        currency = 'USD';
+    } else {
+        currency = currency.toUpperCase();
+    }
+
     const client = new JsonRpcClient(process.env.RPC_URL!, {timeout: RPC_TIMEOUT})
     const utxoBalance = await client.wallet.getBalance();
     const tokenBalances = await client.account.getTokenBalances({limit: TOKEN_LIMIT}, true, { symbolLookup: true });
@@ -324,32 +330,31 @@ async function showSummary()
     }
     let tableContent: [string, string, string][] = [];
 
-    let totalFiat = 0;
+    let total = 0;
     for(const item of Object.keys(tokenBalances)) {
+
+        let amount = 0;
         if(item.match(/.*-.*/)) {
             const [tokenA, tokenB] = item.split('-');
             const poolPair = await client.poolpair.getPoolPair(item);
             const amountTokenA = tokenBalances[item].dividedBy(Object.values(poolPair)[0].totalLiquidity).times(Object.values(poolPair)[0].reserveA);
             const amountTokenB = tokenBalances[item].dividedBy(Object.values(poolPair)[0].totalLiquidity).times(Object.values(poolPair)[0].reserveB);
-            const fiatPriceTokenA = await fiatPriceOf(tokenA);
-            const fiatPriceTokenB = await fiatPriceOf(tokenB);
+            const priceTokenB = await priceOf(client, tokenB, currency);
 
-            let itemsFiat = (new BigNumber(fiatPriceTokenA).times(amountTokenA).plus(new BigNumber(fiatPriceTokenB).times(amountTokenB))).toNumber();
-            // tableData.push([item, rightAlign(tokenBalances[item].toFixed(8), tableConfig.columns[1].width), rightAlign(itemsFiat.toFixed(2), tableConfig.columns[2].width)]);
-            tableContent.push([item, tokenBalances[item].toFixed(8),itemsFiat.toFixed(2) ]);
-            totalFiat += itemsFiat;
+            amount = (amountTokenB.times(priceTokenB).times(new BigNumber(2))).toNumber();
         } else {
-            const fiatPriceToken = await fiatPriceOf(item);
-            let itemFiat = (tokenBalances[item].times(new BigNumber(fiatPriceToken))).toNumber();
-            // tableData.push([item, rightAlign(tokenBalances[item].toFixed(8), tableConfig.columns[1].width), rightAlign(itemFiat.toFixed(2), tableConfig.columns[2].width)]);
-            tableContent.push([item, tokenBalances[item].toFixed(8), itemFiat.toFixed(2)]);
-            totalFiat += itemFiat;
+            
+            const priceToken = await priceOf(client, item, currency);
+            amount = (tokenBalances[item].times(new BigNumber(priceToken))).toNumber();
         }
+        tableContent.push([item, tokenBalances[item].toFixed(8), amount.toFixed(2)]);
+        total += amount;
+
     }
 
     tableContent.sort((a, b) => b[2].localeCompare(a[2], 'en', {numeric: true}));
-    tableContent.unshift(['Token', 'Amount', 'USD Value']);
-    tableContent.push(['Total', '', totalFiat.toFixed(2)]);
+    tableContent.unshift(['Token', 'Amount', `${currency} Value`]);
+    tableContent.push(['Total', '', total.toFixed(2)]);
 
     let alignedTableContent = tableContent.map(row => [row[0], rightAlign(row[1], tableConfig.columns[1].width), rightAlign(row[2], tableConfig.columns[2].width)]);
     alignedTableContent[0] = alignedTableContent[0].map(cell => chalk.bold(cell));
@@ -364,9 +369,9 @@ export async function daemon(options: any)
     DEFAULT_CONFIGFILE = untildify(DEFAULT_CONFIGFILE);
     dotenv.config({ path: DEFAULT_CONFIGFILE });
 
-    if(options.summary) {
+    if(options.holdings) {
         if(checkConfig()) {
-            await showSummary();
+            await showHoldingsSummary(typeof options.holdings === 'string'?options.holdings:undefined);
         }
         process.exit(0);
     }
