@@ -90,7 +90,7 @@ async function checkPassphrase(): Promise<boolean>
     const client = new JsonRpcClient(process.env.RPC_URL!, {timeout: RPC_TIMEOUT})
     const passphrase = promptPassphrase();    
     try {
-        await client.call('walletpassphrase', [ passphrase, 5*60 ], 'bignumber');
+        await client.call('walletpassphrase', [ passphrase, 30*60 ], 'bignumber');
         await client.call('walletlock', [], 'bignumber');
     } catch(error) {
         if(error instanceof RpcApiError) {
