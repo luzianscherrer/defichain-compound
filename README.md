@@ -92,7 +92,25 @@ If fully unattended operation including startup is desired, the passphrase can a
 
 ### Holdings Summary
 
-When started with the `--summary` option, instead of going into daemon mode an overview of all holdings in the wallet is shown. This overview also contains the respective USD value for each position and the overall total.
+When started with the `--holdings` option, instead of going into daemon mode an overview of all holdings in the wallet is shown. Optionally a currency symbol can be given as argument to show the values in the respective currency. The default is USD. DFI is also a valid option to get the total equivalent in DFI tokens.
+
+**Example**
+```
+$ defichain-compound --holdings CHF
+╔════════════════════════════════════════════════════════╗
+║ Token                     Amount             CHF Value ║
+╟────────────────────────────────────────────────────────╢
+║ BTC-DFI              14.74536882               3321.08 ║
+╟────────────────────────────────────────────────────────╢
+║ AAPL-DUSD            43.92371935                897.94 ║
+╟────────────────────────────────────────────────────────╢
+║ DFI                   4.94089433                  3.31 ║
+╟────────────────────────────────────────────────────────╢
+║ Total                                          4222.33 ║
+╚════════════════════════════════════════════════════════╝
+```
+
+NOTE: Because of the current [difficulties with DUSD's peg](https://julianhosp.medium.com/resolving-dusds-peg-at-1-usd-once-and-for-all-bd1c0ef4914c), its value can be determined using various strategies. This calculation is using the ratio of the DUSD-DFI liquidity pool.
 
 ## Disclaimer
 
