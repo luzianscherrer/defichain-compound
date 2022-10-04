@@ -104,7 +104,7 @@ async function checkPassphrase(): Promise<boolean>
     return true;
 }
 
-async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNumber) 
+async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNumber, target: string) 
 {
     if(tokenBalance.isLessThan(new BigNumber(process.env.DFI_COMPOUND_AMOUNT!))) {
         const amountToConvert = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).minus(tokenBalance);
@@ -112,7 +112,7 @@ async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNu
         tokenBalance = await getDfiTokenBalance(client);
     }
 
-    const [symbolOfOtherToken] = process.env.TARGET!.split('-');
+    const [symbolOfOtherToken] = target.split('-');
     const amountOfDfiToken = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).dividedBy(2);
     const amountOfOtherToken = await swapTokenAction(client, tokenBalance, amountOfDfiToken, symbolOfOtherToken);
     console.log(logDate() +  `Add pool liquidity ${amountOfOtherToken} ${symbolOfOtherToken} / ${amountOfDfiToken} DFI`);
@@ -264,9 +264,9 @@ async function checkBalances()
         if(targets[0].match(/[^ ]{34}/)) {
             await transferToWalletAction(client, utxoBalance);
         } else if(supportedPoolPairs.map(pair => pair.replace('-DFI', '')).includes(targets[0])) {
-            await swapTokenAction(client, dfiTokenBalance, new BigNumber(process.env.DFI_COMPOUND_AMOUNT!), process.env.TARGET!);
+            await swapTokenAction(client, dfiTokenBalance, new BigNumber(process.env.DFI_COMPOUND_AMOUNT!), targets[0]);
         } else if(supportedPoolPairs.includes(targets[0])) {
-            await provideLiquidityAction(client, dfiTokenBalance);
+            await provideLiquidityAction(client, dfiTokenBalance, targets[0]);
         } else {
             console.log(logDate() + `TARGET does not contain a valid value`);
         }
