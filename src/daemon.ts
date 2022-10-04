@@ -241,7 +241,7 @@ async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNum
          console.log(logDate() + `Convert transaction: ${hash}`);
     }
 
-    console.log(logDate() +  `Send ${amount} UTXO to ${process.env.TARGET}`);
+    console.log(logDate() +  `Send ${amount} UTXO to ${walletAddress}`);
     const txid = await client.call(
         'sendtoaddress',
         [ walletAddress, amount.toFixed(8), '', '', false ],
