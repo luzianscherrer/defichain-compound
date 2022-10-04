@@ -184,7 +184,7 @@ async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber, a
     let tokenBalanceAfter = tokenBalanceBefore;
     while(tokenBalanceAfter.isEqualTo(tokenBalanceBefore)) {
         await new Promise(r => setTimeout(r, 5*1000));
-        const tokenBalancesAfter = await client.account.getTokenBalances({limit: 1000}, true, { symbolLookup: true });
+        const tokenBalancesAfter = await client.account.getTokenBalances({limit: TOKEN_LIMIT}, true, { symbolLookup: true });
         if(tokenBalancesAfter[target]) {
             tokenBalanceAfter = tokenBalancesAfter[target];
         }
