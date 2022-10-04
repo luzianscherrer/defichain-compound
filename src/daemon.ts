@@ -226,7 +226,7 @@ async function swapTokenAction(client: JsonRpcClient, fromTokenAmount: BigNumber
     return toTokenBalanceAfter.minus(toTokenBalanceBefore);
 }
 
-async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNumber) 
+async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNumber, walletAddress: string) 
 {
     const amount = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!);
 
@@ -244,7 +244,7 @@ async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNum
     console.log(logDate() +  `Send ${amount} UTXO to ${process.env.TARGET}`);
     const txid = await client.call(
         'sendtoaddress',
-        [ process.env.TARGET, amount.toFixed(8), '', '', false ],
+        [ walletAddress, amount.toFixed(8), '', '', false ],
         'bignumber'
     );
     console.log(logDate() +  `Send transaction: ${txid}`);
@@ -311,7 +311,7 @@ async function checkBalances()
 
         const targets = process.env.TARGET!.split(/\s(.*)/s);
         if(targets[0].match(/[^ ]{34}/)) {
-            await transferToWalletAction(client, utxoBalance);
+            await transferToWalletAction(client, utxoBalance, targets[0]);
         } else if(supportedDfiPoolPairs.map(pair => pair.replace('-DFI', '')).includes(targets[0])) {
             await swapTokenAction(client, new BigNumber(process.env.DFI_COMPOUND_AMOUNT!), 'DFI', targets[0]);
         } else if(supportedDusdPoolPairs.map(pair => pair.replace('-DUSD', '')).includes(targets[0])) {
