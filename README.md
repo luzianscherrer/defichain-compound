@@ -26,7 +26,7 @@ The parameter `TARGET` in the config file defines the compounding action. The fo
 
 | Action | TARGET | Example value for TARGET | Example use case |
 |:-|:-|:-|:-|
-| Add pool liquidity | Pool pair symbol | `BTC-DFI` | Compounding BTC-DFI pool liquidity mining (currently only DFI pairs are supported) |
+| Add pool liquidity | Pool pair symbol | `BTC-DFI` | Compounding BTC-DFI pool liquidity mining |
 | Token swap | Token symbol | `ETH` | DCA into ETH token |
 | Wallet transfer | DeFiChain wallet address | `bDEl...wxTgV` | Transfer DFI to [Cake](https://www.cakedefi.com) for staking |
 
