@@ -110,7 +110,7 @@ $ defichain-compound --holdings CHF
 ╚════════════════════════════════════════════════════════╝
 ```
 
-NOTE: Because of the current [difficulties with DUSD's peg](https://julianhosp.medium.com/resolving-dusds-peg-at-1-usd-once-and-for-all-bd1c0ef4914c), its value can be determined using various strategies. This calculation is using the ratio of the DUSD-DFI liquidity pool.
+NOTE: Because of the current [difficulties with DUSD's peg](https://blog.defichain.com/dex-stabilization-fee/), its value can be determined using various strategies. This calculation is using the ratio of the DUSD-DFI liquidity pool.
 
 ## Example Session
 
