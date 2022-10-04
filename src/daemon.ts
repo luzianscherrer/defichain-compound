@@ -121,6 +121,22 @@ async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNu
         process.env.WALLET_ADDRESS!
     );
     console.log(logDate() +  `Add pool liquidity transaction: ${txid}`);
+
+    console.log(logDate() + `Waiting for liquidity transaction to complete`);
+    const tokenBalancesBefore = await client.account.getTokenBalances({limit: 1000}, true, { symbolLookup: true });
+    let tokenBalanceBefore = new BigNumber(0);
+    if(tokenBalancesBefore[target]) {
+        tokenBalanceBefore = tokenBalancesBefore[target];
+    }
+    let tokenBalanceAfter = tokenBalanceBefore;
+    while(tokenBalanceAfter.isEqualTo(tokenBalanceBefore)) {
+        await new Promise(r => setTimeout(r, 5*1000));
+        const tokenBalancesAfter = await client.account.getTokenBalances({limit: 1000}, true, { symbolLookup: true });
+        if(tokenBalancesAfter[target]) {
+            tokenBalanceAfter = tokenBalancesAfter[target];
+        }
+    }
+    console.log(logDate() + `Received ${tokenBalanceAfter.minus(tokenBalanceBefore)} ${target} token`);
 }
 
 async function convertUtxoToAccount(client: JsonRpcClient, amountToConvert: BigNumber, amountRequired: BigNumber)
