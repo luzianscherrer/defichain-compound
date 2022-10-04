@@ -110,14 +110,13 @@ $ defichain-compound --holdings CHF
 ╚════════════════════════════════════════════════════════╝
 ```
 
-NOTE: Because of the current [difficulties with DUSD's peg](https://julianhosp.medium.com/resolving-dusds-peg-at-1-usd-once-and-for-all-bd1c0ef4914c), its value can be determined using various strategies. This calculation is using the ratio of the DUSD-DFI liquidity pool.
+NOTE: Because of the current [difficulties with DUSD's peg](https://blog.defichain.com/dex-stabilization-fee/), its value can be determined using various strategies. This calculation is using the ratio of the DUSD-DFI liquidity pool.
 
 ## Example Session
 
 Here's an example run with `TARGET=ETH-DFI` for illustration purposes:
 
 ```
-2022-10-04 09:00:03.046 Daemon started with pid 61762
 2022-10-04 09:00:03.652 Balance: 13.41241989 (DFI token: 0.38993539 / UTXO: 13.0224845)
 2022-10-04 09:00:03.658 Compound threshold of 5.1 (5 + 0.1) reached
 2022-10-04 09:00:03.755 Convert 4.61006461 UTXO to DFI token
