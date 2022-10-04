@@ -112,6 +112,30 @@ $ defichain-compound --holdings CHF
 
 NOTE: Because of the current [difficulties with DUSD's peg](https://julianhosp.medium.com/resolving-dusds-peg-at-1-usd-once-and-for-all-bd1c0ef4914c), its value can be determined using various strategies. This calculation is using the ratio of the DUSD-DFI liquidity pool.
 
+## Example Session
+
+Here's an example run with `TARGET=ETH-DFI` for illustration purposes:
+
+```
+2022-10-04 09:00:03.046 Daemon started with pid 61762
+2022-10-04 09:00:03.652 Balance: 13.41241989 (DFI token: 0.38993539 / UTXO: 13.0224845)
+2022-10-04 09:00:03.658 Compound threshold of 5.1 (5 + 0.1) reached
+2022-10-04 09:00:03.755 Convert 4.61006461 UTXO to DFI token
+2022-10-04 09:00:03.916 Conversion transaction: c7e7...6d26
+2022-10-04 09:00:03.916 Waiting for conversion to complete
+2022-10-04 09:00:29.500 Conversion completed
+2022-10-04 09:00:29.505 Swap 2.5 DFI token to ETH token
+2022-10-04 09:00:29.521 Swap transaction: 9a08...2573
+2022-10-04 09:00:29.521 Waiting for swap to complete
+2022-10-04 09:00:50.743 Received 0.00129444 ETH token
+2022-10-04 09:00:50.744 Add pool liquidity 0.00129444 ETH / 2.5 DFI
+2022-10-04 09:00:51.649 Add pool liquidity transaction: 04d8...db4a
+2022-10-04 09:00:51.649 Waiting for liquidity transaction to complete
+2022-10-04 09:02:32.290 Received 0.05677079 ETH-DFI token
+```
+
+
+
 ## Disclaimer
 
 This is not financial advice. Please only run this code if you fully understand what it is doing. This code is provided as-is with no warranty. I take no responsibility for lost funds or any other damage that it might cause. 
