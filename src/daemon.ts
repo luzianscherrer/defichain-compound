@@ -104,15 +104,15 @@ async function checkPassphrase(): Promise<boolean>
     return true;
 }
 
-async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNumber, target: string) 
+async function provideLiquidityAction(client: JsonRpcClient, dfiTokenBalance: BigNumber, poolPairSymbol: string) 
 {
-    if(tokenBalance.isLessThan(new BigNumber(process.env.DFI_COMPOUND_AMOUNT!))) {
-        const amountToConvert = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).minus(tokenBalance);
+    if(dfiTokenBalance.isLessThan(new BigNumber(process.env.DFI_COMPOUND_AMOUNT!))) {
+        const amountToConvert = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).minus(dfiTokenBalance);
         await convertUtxoToAccount(client, amountToConvert, new BigNumber(process.env.DFI_COMPOUND_AMOUNT!));
-        tokenBalance = await getDfiTokenBalance(client);
+        dfiTokenBalance = await getDfiTokenBalance(client);
     }
 
-    const [symbolOfOtherToken] = target.split('-');
+    const [symbolOfOtherToken] = poolPairSymbol.split('-');
     const amountOfDfiToken = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).dividedBy(2);
     const amountOfOtherToken = await swapTokenAction(client, amountOfDfiToken, 'DFI', symbolOfOtherToken);
     console.log(logDate() +  `Add pool liquidity ${amountOfOtherToken} ${symbolOfOtherToken} / ${amountOfDfiToken} DFI`);
@@ -123,20 +123,20 @@ async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNu
     console.log(logDate() +  `Add pool liquidity transaction: ${txid}`);
 
     console.log(logDate() + `Waiting for liquidity transaction to complete`);
-    const tokenBalancesBefore = await client.account.getTokenBalances({limit: 1000}, true, { symbolLookup: true });
-    let tokenBalanceBefore = new BigNumber(0);
-    if(tokenBalancesBefore[target]) {
-        tokenBalanceBefore = tokenBalancesBefore[target];
+    const balances = await client.account.getTokenBalances({limit: 1000}, true, { symbolLookup: true });
+    let poolPairBalanceBefore = new BigNumber(0);
+    if(balances[poolPairSymbol]) {
+        poolPairBalanceBefore = balances[poolPairSymbol];
     }
-    let tokenBalanceAfter = tokenBalanceBefore;
-    while(tokenBalanceAfter.isEqualTo(tokenBalanceBefore)) {
+    let poolPairBalanceAfter = poolPairBalanceBefore;
+    while(poolPairBalanceAfter.isEqualTo(poolPairBalanceBefore)) {
         await new Promise(r => setTimeout(r, 5*1000));
-        const tokenBalancesAfter = await client.account.getTokenBalances({limit: 1000}, true, { symbolLookup: true });
-        if(tokenBalancesAfter[target]) {
-            tokenBalanceAfter = tokenBalancesAfter[target];
+        const balances = await client.account.getTokenBalances({limit: 1000}, true, { symbolLookup: true });
+        if(balances[poolPairSymbol]) {
+            poolPairBalanceAfter = balances[poolPairSymbol];
         }
     }
-    console.log(logDate() + `Received ${tokenBalanceAfter.minus(tokenBalanceBefore)} ${target} token`);
+    console.log(logDate() + `Received ${poolPairBalanceAfter.minus(poolPairBalanceBefore)} ${poolPairSymbol} token`);
 }
 
 async function convertUtxoToAccount(client: JsonRpcClient, amountToConvert: BigNumber, amountRequired: BigNumber)
