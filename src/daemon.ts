@@ -104,7 +104,36 @@ async function checkPassphrase(): Promise<boolean>
     return true;
 }
 
-async function provideLiquidityAction(client: JsonRpcClient, dfiTokenBalance: BigNumber, poolPairSymbol: string) 
+async function provideDusdLiquidityAction(client: JsonRpcClient, dusdTokenBalance: BigNumber, poolPairSymbol: string) 
+{
+    const [symbolOfOtherToken] = poolPairSymbol.split('-');
+    const amountOfDusdToken = dusdTokenBalance.dividedBy(2);
+    const amountOfOtherToken = await swapTokenAction(client, amountOfDusdToken, 'DUSD', symbolOfOtherToken);
+    console.log(logDate() +  `Add pool liquidity ${amountOfOtherToken} ${symbolOfOtherToken} / ${amountOfDusdToken} DUSD`);
+    const txid = await client.poolpair.addPoolLiquidity(
+        { [process.env.WALLET_ADDRESS!]: [ `${amountOfOtherToken.toFixed(8)}@${symbolOfOtherToken}`, `${amountOfDusdToken.toFixed(8)}@DUSD` ] },  
+        process.env.WALLET_ADDRESS!
+    );
+    console.log(logDate() +  `Add pool liquidity transaction: ${txid}`);
+
+    console.log(logDate() + `Waiting for liquidity transaction to complete`);
+    const balances = await client.account.getTokenBalances({limit: 1000}, true, { symbolLookup: true });
+    let poolPairBalanceBefore = new BigNumber(0);
+    if(balances[poolPairSymbol]) {
+        poolPairBalanceBefore = balances[poolPairSymbol];
+    }
+    let poolPairBalanceAfter = poolPairBalanceBefore;
+    while(poolPairBalanceAfter.isEqualTo(poolPairBalanceBefore)) {
+        await new Promise(r => setTimeout(r, 5*1000));
+        const balances = await client.account.getTokenBalances({limit: 1000}, true, { symbolLookup: true });
+        if(balances[poolPairSymbol]) {
+            poolPairBalanceAfter = balances[poolPairSymbol];
+        }
+    }
+    console.log(logDate() + `Received ${poolPairBalanceAfter.minus(poolPairBalanceBefore)} ${poolPairSymbol} token`);
+}
+
+async function provideDfiLiquidityAction(client: JsonRpcClient, dfiTokenBalance: BigNumber, poolPairSymbol: string) 
 {
     if(dfiTokenBalance.isLessThan(new BigNumber(process.env.DFI_COMPOUND_AMOUNT!))) {
         const amountToConvert = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).minus(dfiTokenBalance);
@@ -177,7 +206,7 @@ async function swapTokenAction(client: JsonRpcClient, fromTokenAmount: BigNumber
     const txid = await client.poolpair.poolSwap({ 
         from: process.env.WALLET_ADDRESS!, 
         tokenFrom: fromTokenSymbol,
-        amountFrom: fromTokenAmount.toNumber(),
+        amountFrom: parseFloat(fromTokenAmount.toFixed(8)),
         to: process.env.WALLET_ADDRESS!,
         tokenTo: toTokenSymbol
     });
@@ -289,7 +318,10 @@ async function checkBalances()
             const amountOfDusdToken = await swapTokenAction(client, new BigNumber(process.env.DFI_COMPOUND_AMOUNT!), 'DFI', 'DUSD');
             await swapTokenAction(client, amountOfDusdToken, 'DUSD', targets[0]);
         } else if(supportedDfiPoolPairs.includes(targets[0])) {
-            await provideLiquidityAction(client, dfiTokenBalance, targets[0]);
+            await provideDfiLiquidityAction(client, dfiTokenBalance, targets[0]);
+        } else if(supportedDusdPoolPairs.includes(targets[0])) {
+            const amountOfDusdToken = await swapTokenAction(client, new BigNumber(process.env.DFI_COMPOUND_AMOUNT!), 'DFI', 'DUSD');
+            await provideDusdLiquidityAction(client, amountOfDusdToken, targets[0]);
         } else {
             console.log(logDate() + `TARGET does not contain a valid value`);
         }
