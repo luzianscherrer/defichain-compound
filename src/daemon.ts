@@ -90,7 +90,7 @@ async function checkPassphrase(): Promise<boolean>
     const client = new JsonRpcClient(process.env.RPC_URL!, {timeout: RPC_TIMEOUT})
     const passphrase = promptPassphrase();    
     try {
-        await client.call('walletpassphrase', [ passphrase, 30*60 ], 'bignumber');
+        await client.call('walletpassphrase', [ passphrase, 1*60 ], 'bignumber');
         await client.call('walletlock', [], 'bignumber');
     } catch(error) {
         if(error instanceof RpcApiError) {
@@ -114,7 +114,7 @@ async function provideLiquidityAction(client: JsonRpcClient, tokenBalance: BigNu
 
     const [symbolOfOtherToken] = target.split('-');
     const amountOfDfiToken = new BigNumber(process.env.DFI_COMPOUND_AMOUNT!).dividedBy(2);
-    const amountOfOtherToken = await swapTokenAction(client, tokenBalance, amountOfDfiToken, symbolOfOtherToken);
+    const amountOfOtherToken = await swapTokenAction(client, amountOfDfiToken, 'DFI', symbolOfOtherToken);
     console.log(logDate() +  `Add pool liquidity ${amountOfOtherToken} ${symbolOfOtherToken} / ${amountOfDfiToken} DFI`);
     const txid = await client.poolpair.addPoolLiquidity(
         { [process.env.WALLET_ADDRESS!]: [ `${amountOfOtherToken.toFixed(8)}@${symbolOfOtherToken}`, `${amountOfDfiToken.toFixed(8)}@DFI` ] },  
@@ -157,41 +157,44 @@ async function convertUtxoToAccount(client: JsonRpcClient, amountToConvert: BigN
     console.log(logDate() + `Conversion completed`);
 }
 
-async function swapTokenAction(client: JsonRpcClient, tokenBalance: BigNumber, amount: BigNumber, target: string): Promise<BigNumber> 
+async function swapTokenAction(client: JsonRpcClient, fromTokenAmount: BigNumber, fromTokenSymbol: string, toTokenSymbol: string): Promise<BigNumber> 
 {
-    if(tokenBalance.isLessThan(amount)) {
-        const amountToConvert = amount.minus(tokenBalance);
-        await convertUtxoToAccount(client, amountToConvert, amount);
+    if(fromTokenSymbol === 'DFI') {
+        const dfiTokenBalance = await getDfiTokenBalance(client);
+        if(dfiTokenBalance.isLessThan(fromTokenAmount)) {
+            const amountToConvert = fromTokenAmount.minus(dfiTokenBalance);
+            await convertUtxoToAccount(client, amountToConvert, fromTokenAmount);
+        }
     }
 
-    const tokenBalancesBefore = await client.account.getTokenBalances({limit: TOKEN_LIMIT}, true, { symbolLookup: true });
-    let tokenBalanceBefore  = new BigNumber(0);
-    if(tokenBalancesBefore[target]) {
-        tokenBalanceBefore = tokenBalancesBefore[target];
+    const balances = await client.account.getTokenBalances({limit: TOKEN_LIMIT}, true, { symbolLookup: true });
+    let toTokenBalanceBefore  = new BigNumber(0);
+    if(balances[toTokenSymbol]) {
+        toTokenBalanceBefore = balances[toTokenSymbol];
     }
 
-    console.log(logDate() +  `Swap ${amount} DFI token to ${target} token`);
+    console.log(logDate() +  `Swap ${fromTokenAmount} ${fromTokenSymbol} token to ${toTokenSymbol} token`);
     const txid = await client.poolpair.poolSwap({ 
         from: process.env.WALLET_ADDRESS!, 
-        tokenFrom: "DFI",
-        amountFrom: amount.toNumber(),
+        tokenFrom: fromTokenSymbol,
+        amountFrom: fromTokenAmount.toNumber(),
         to: process.env.WALLET_ADDRESS!,
-        tokenTo: target
+        tokenTo: toTokenSymbol
     });
     console.log(logDate() + `Swap transaction: ${txid}`);
 
     console.log(logDate() + `Waiting for swap to complete`);
-    let tokenBalanceAfter = tokenBalanceBefore;
-    while(tokenBalanceAfter.isEqualTo(tokenBalanceBefore)) {
+    let toTokenBalanceAfter = toTokenBalanceBefore;
+    while(toTokenBalanceAfter.isEqualTo(toTokenBalanceBefore)) {
         await new Promise(r => setTimeout(r, 5*1000));
-        const tokenBalancesAfter = await client.account.getTokenBalances({limit: TOKEN_LIMIT}, true, { symbolLookup: true });
-        if(tokenBalancesAfter[target]) {
-            tokenBalanceAfter = tokenBalancesAfter[target];
+        const balances = await client.account.getTokenBalances({limit: TOKEN_LIMIT}, true, { symbolLookup: true });
+        if(balances[toTokenSymbol]) {
+            toTokenBalanceAfter = balances[toTokenSymbol];
         }
     }
-    console.log(logDate() + `Received ${tokenBalanceAfter.minus(tokenBalanceBefore)} ${target} token`);
+    console.log(logDate() + `Received ${toTokenBalanceAfter.minus(toTokenBalanceBefore)} ${toTokenSymbol} token`);
 
-    return tokenBalanceAfter.minus(tokenBalanceBefore);
+    return toTokenBalanceAfter.minus(toTokenBalanceBefore);
 }
 
 async function transferToWalletAction(client: JsonRpcClient, utxoBalance: BigNumber) 
@@ -229,7 +232,7 @@ async function consolidateDfiTokens(client: JsonRpcClient)
 {
     console.log(logDate() + `Consolidation needed because DFI tokens are spread accross accounts`);
 
-    await client.call('walletpassphrase', [ walletPassphrase, 5*60 ], 'bignumber');
+    await client.call('walletpassphrase', [ walletPassphrase, 30*60 ], 'bignumber');
 
     const accounts = await client.account.listAccounts({limit: TOKEN_LIMIT}, false, {indexedAmounts: true, isMineOnly: true});
     for(const account of accounts) {
@@ -272,16 +275,20 @@ async function checkBalances()
         console.log(logDate() + `Compound threshold of ${BigNumber(process.env.DFI_COMPOUND_AMOUNT!).plus(RESERVE)} (${BigNumber(process.env.DFI_COMPOUND_AMOUNT!)} + ${RESERVE}) reached`);
 
         const poolPairs = await client.poolpair.listPoolPairs({start: 0, including_start: true, limit: TOKEN_LIMIT}, false);
-        const supportedPoolPairs = Object.entries(poolPairs).filter(([key, value]) => value.symbol.endsWith('-DFI')).map(pair => pair[1].symbol);    
+        const supportedDfiPoolPairs = Object.entries(poolPairs).filter(([key, value]) => value.symbol.endsWith('-DFI')).map(pair => pair[1].symbol);    
+        const supportedDusdPoolPairs = Object.entries(poolPairs).filter(([key, value]) => value.symbol.endsWith('-DUSD')).map(pair => pair[1].symbol);    
 
-        await client.call('walletpassphrase', [ walletPassphrase, 5*60 ], 'bignumber');
+        await client.call('walletpassphrase', [ walletPassphrase, 30*60 ], 'bignumber');
 
         const targets = process.env.TARGET!.split(/\s(.*)/s);
         if(targets[0].match(/[^ ]{34}/)) {
             await transferToWalletAction(client, utxoBalance);
-        } else if(supportedPoolPairs.map(pair => pair.replace('-DFI', '')).includes(targets[0])) {
-            await swapTokenAction(client, dfiTokenBalance, new BigNumber(process.env.DFI_COMPOUND_AMOUNT!), targets[0]);
-        } else if(supportedPoolPairs.includes(targets[0])) {
+        } else if(supportedDfiPoolPairs.map(pair => pair.replace('-DFI', '')).includes(targets[0])) {
+            await swapTokenAction(client, new BigNumber(process.env.DFI_COMPOUND_AMOUNT!), 'DFI', targets[0]);
+        } else if(supportedDusdPoolPairs.map(pair => pair.replace('-DUSD', '')).includes(targets[0])) {
+            const amountOfDusdToken = await swapTokenAction(client, new BigNumber(process.env.DFI_COMPOUND_AMOUNT!), 'DFI', 'DUSD');
+            await swapTokenAction(client, amountOfDusdToken, 'DUSD', targets[0]);
+        } else if(supportedDfiPoolPairs.includes(targets[0])) {
             await provideLiquidityAction(client, dfiTokenBalance, targets[0]);
         } else {
             console.log(logDate() + `TARGET does not contain a valid value`);
