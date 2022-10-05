@@ -16,6 +16,8 @@
 npm -g install defichain-compound
 ```
 
+In case `npm` is not already available please see [Downloading and installing Node.js and npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
+
 ## Configuration
 
 The default config file is `~/.defichain-compound`. Using the `--conf` option a different location for the config file can be chosen.
