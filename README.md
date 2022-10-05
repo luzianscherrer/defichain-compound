@@ -8,7 +8,7 @@
 
 ## Introduction
 
-`defichain-compound` is a CLI daemon that is running in parallel with `defid` of the [DeFiChain desktop wallet](https://github.com/DeFiCh/app) or [fullnode](https://github.com/DeFiCh/ain). Its purpose is to execute automatic compounding actions based on a configuration file.
+`defichain-compound` is a CLI daemon that is running in parallel with `defid` of the [DeFiChain desktop wallet](https://github.com/DeFiCh/app) or [masternode](https://github.com/DeFiCh/ain). Its purpose is to execute automatic compounding actions based on a configuration file.
 
 ## Installation
 
@@ -33,6 +33,8 @@ The parameter `TARGET` in the config file defines the compounding action. The fo
 | Add pool liquidity | Pool pair symbol | `BTC-DFI` | Compounding BTC-DFI pool liquidity mining |
 | Token swap | Token symbol | `ETH` | DCA into ETH token |
 | Wallet transfer | DeFiChain wallet address | `bDEl...wxTgV` | Transfer DFI to [Cake](https://www.cakedefi.com) for staking |
+
+All tokens and pool pairs on DeFiChain are supported. For swapping into dTokens the route is DFI &rarr; DUSD &rarr; dToken.
 
 ### Example Config File
 
