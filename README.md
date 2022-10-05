@@ -18,6 +18,8 @@ npm -g install defichain-compound
 
 In case `npm` is not already available please see [Downloading and installing Node.js and npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
 
+After the installation a config file needs to be created (see below). Once the config file is ready, simply execute the command `defichain-compound`. It will then prompt for the wallet passphrase and fork a daemon process in the background that will constantly be running and acting according to the configured actions.
+
 ## Configuration
 
 The default config file is `~/.defichain-compound`. Using the `--conf` option a different location for the config file can be chosen.
