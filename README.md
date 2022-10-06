@@ -1,3 +1,5 @@
+<img align="right" width="41" height="80" src="https://raw.githubusercontent.com/luzianscherrer/defichain-compound/main/assets/defichain-compound-logo-github.png">
+
 # DFI earnings automation for DeFiChain
 
 [![npm](https://img.shields.io/npm/v/defichain-compound)](https://www.npmjs.com/package/defichain-compound)
