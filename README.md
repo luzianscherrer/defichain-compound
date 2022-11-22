@@ -12,6 +12,8 @@
 
 `defichain-compound` is a CLI daemon that is running in parallel with `defid` of the [DeFiChain desktop wallet](https://github.com/DeFiCh/app) or [masternode](https://github.com/DeFiCh/ain). Its purpose is to execute automatic compounding actions based on a configuration file.
 
+This project has been approved by the community as [CFP-2211-01](https://github.com/DeFiCh/dfips/issues/220). Thank you all for your support! 🎉
+
 ## Installation
 
 ```
