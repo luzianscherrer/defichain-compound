@@ -1,6 +1,6 @@
 {
   "name": "defichain-compound",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "DFI earnings automation for DeFiChain",
   "main": "./lib/index.js",
   "scripts": {
