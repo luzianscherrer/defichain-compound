@@ -49,7 +49,7 @@ function daemonize() {
 
 function daemonLoop() {
   checkBalances();
-  daemonInterval = setInterval(function () {
+  daemonInterval = setInterval(function() {
     checkBalances();
   }, parseInt(process.env.CHECK_INTERVAL_MINUTES ?? DEFAULT_CHECK_INTERVAL_MINUTES) * 60 * 1000);
 }
@@ -323,7 +323,18 @@ async function checkBalances() {
 
   const accountTokenBalances = await client.account.getAccount(process.env.WALLET_ADDRESS!, {}, {indexedAmounts: true});
   const dfiAccountTokenBalance = new BigNumber(accountTokenBalances['0']);
-  if (dfiTokenBalance.isEqualTo(dfiAccountTokenBalance) == false) {
+  let hasOtherAccountsToConsolidate = false;
+  const accounts = await client.account.listAccounts({limit: TOKEN_LIMIT}, false, {
+    indexedAmounts: true,
+    isMineOnly: true,
+  });
+  for (const account of accounts) {
+    if (account.owner !== process.env.WALLET_ADDRESS! && account.amount['0'] !== undefined) {
+      hasOtherAccountsToConsolidate = true;
+    }
+  }
+
+  if (hasOtherAccountsToConsolidate && dfiTokenBalance.isEqualTo(dfiAccountTokenBalance) == false) {
     await consolidateDfiTokens(client);
   }
 
@@ -437,7 +448,10 @@ async function showHoldingsSummary(currency?: string) {
         .times(Object.values(poolPair)[0].reserveB);
       const priceTokenB = await priceOf(client, tokenB, currency);
 
-      amount = amountTokenB.times(priceTokenB).times(new BigNumber(2)).toNumber();
+      amount = amountTokenB
+        .times(priceTokenB)
+        .times(new BigNumber(2))
+        .toNumber();
     } else {
       const priceToken = await priceOf(client, item, currency);
       amount = tokenBalances[item].times(new BigNumber(priceToken)).toNumber();
